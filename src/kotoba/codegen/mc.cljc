@@ -19,6 +19,11 @@
    :bit-and #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
    :bit-or #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
    :bit-xor #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   :equal #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   :less-than #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   :greater-than #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   :less-or-equal #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   :greater-or-equal #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
    :spill-load #{:mc/op :mc/encoding :mir/dst :mir/slot}
    :spill-store #{:mc/op :mc/encoding :mir/src :mir/slot}
    :return #{:mc/op :mc/encoding :mir/value}})
