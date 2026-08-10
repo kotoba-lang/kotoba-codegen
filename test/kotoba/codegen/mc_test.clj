@@ -36,7 +36,13 @@
 
 (deftest canonical-allocated-program-is-admitted
   (is (= program (mc/validate! program)))
-  (is (= spilled-program (mc/validate! spilled-program))))
+  (is (= spilled-program (mc/validate! spilled-program)))
+  (let [moved (assoc program :mc/instructions
+                     [{:mc/op :mc/instruction :mc/encoding :x86-64/move
+                       :mir/dst :x86-64/rcx :mir/src :x86-64/rax}
+                      {:mc/op :mc/instruction :mc/encoding :x86-64/return
+                       :mir/value :x86-64/rcx}])]
+    (is (= moved (mc/validate! moved)))))
 
 (deftest selected-i64-scalar-family-is-admitted
   (doseq [operation [:subtract :multiply :quotient :bit-and :bit-or :bit-xor
@@ -63,6 +69,13 @@
     (is (thrown? clojure.lang.ExceptionInfo
                  (mc/validate! (assoc-in program [:mc/instructions 0 :ambient/policy]
                                          true)))))
+  (testing "move is canonical and target-specific"
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (mc/validate!
+                  (assoc program :mc/instructions
+                         [{:mc/op :mc/instruction :mc/encoding :x86-64/move
+                           :mir/dst :x86-64/rax :mir/src :x86-64/rcx
+                           :ambient/copy true}])))))
   (testing "physical register profile comes from MIR"
     (is (thrown? clojure.lang.ExceptionInfo
                  (mc/validate! (assoc-in program [:mc/instructions 0 :mir/dst]

@@ -26,6 +26,7 @@
    :greater-or-equal #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
    :spill-load #{:mc/op :mc/encoding :mir/dst :mir/slot}
    :spill-store #{:mc/op :mc/encoding :mir/src :mir/slot}
+   :move #{:mc/op :mc/encoding :mir/dst :mir/src}
    :return #{:mc/op :mc/encoding :mir/value}})
 
 (def ^:private operation-keysets

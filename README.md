@@ -5,7 +5,8 @@ MIR-to-machine-code contracts for Kotoba.
 `kotoba.codegen.mc` owns the closed allocated MC v2 program shape between MIR
 allocation and target byte encoders. It verifies target/encoding agreement,
 exact instruction keysets, physical-register profiles, bounded spill frames,
-and closed control flow.
+closed control flow, and the physical-register `move` selected by MIR's safe
+phi-transport coalescer.
 
 `kotoba.codegen.relocation` owns the closed target-specific relocation request
 passed from instruction selection/layout to object encoders. Requests name the
