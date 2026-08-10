@@ -7,6 +7,11 @@ allocation and target byte encoders. It verifies target/encoding agreement,
 exact instruction keysets, physical-register profiles, bounded spill frames,
 and closed control flow.
 
+`kotoba.codegen.relocation` owns the closed target-specific relocation request
+passed from instruction selection/layout to object encoders. Requests name the
+target, one-based section, bounded offset, typed relocation kind, and external
+symbol; container-specific bit packing remains in `kotoba-object`.
+
 The initial `kotoba.codegen.layout` contract performs deterministic two-pass
 layout for x86-64 and AArch64 label/relative-branch tokens. Backends mix their
 ordinary encoded bytes with these closed tokens; codegen assigns label offsets,
@@ -24,7 +29,8 @@ displacement.
 
 ## Boundary
 
-- owned here: canonical layout tokens, instruction widths, PC bias,
+- owned here: canonical layout tokens, typed relocation requests, instruction
+  widths, PC bias,
   architectural displacement range/alignment checks, deterministic two-pass
   resolution, encoder-width verification, and the allocated MC program schema
 - owned by `kotoba-mir`: target MIR and register allocation
