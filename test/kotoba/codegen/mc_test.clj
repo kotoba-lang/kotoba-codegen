@@ -38,8 +38,10 @@
   (is (= program (mc/validate! program)))
   (is (= spilled-program (mc/validate! spilled-program))))
 
-(deftest selected-i64-arithmetic-family-is-admitted
-  (doseq [operation [:subtract :multiply :quotient :bit-and :bit-or :bit-xor]]
+(deftest selected-i64-scalar-family-is-admitted
+  (doseq [operation [:subtract :multiply :quotient :bit-and :bit-or :bit-xor
+                     :equal :less-than :greater-than :less-or-equal
+                     :greater-or-equal]]
     (let [instruction {:mc/op :mc/instruction
                        :mc/encoding (keyword "x86-64" (name operation))
                        :mir/dst :x86-64/rdx :mir/left :x86-64/rax
