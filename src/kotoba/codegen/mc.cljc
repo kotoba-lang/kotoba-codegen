@@ -7,7 +7,7 @@
   data shape."
   (:require [kotoba.mir :as mir]))
 
-(def version 2)
+(def version 3)
 
 (def ^:private selected-keysets
   {:argument #{:mc/op :mc/encoding :mir/dst :mir/index}
@@ -27,6 +27,7 @@
    :spill-load #{:mc/op :mc/encoding :mir/dst :mir/slot}
    :spill-store #{:mc/op :mc/encoding :mir/src :mir/slot}
    :move #{:mc/op :mc/encoding :mir/dst :mir/src}
+   :call #{:mc/op :mc/encoding :mir/dst :mir/callee :mir/arguments}
    :return #{:mc/op :mc/encoding :mir/value}})
 
 (def ^:private operation-keysets
@@ -73,8 +74,7 @@
 
       (reject! :unknown-operation instruction))))
 
-(defn validate!
-  "Validate and return a closed allocated MC v2 program unchanged."
+(defn- validate-v2!
   [{:mc/keys [version target frame-slots instructions] :as program}]
   (when-not (and (map? program)
                  (= #{:mc/version :mc/target :mc/frame-slots :mc/instructions}
@@ -90,3 +90,43 @@
                     :mir/frame-slots frame-slots
                     :mir/instructions mir-instructions}))
   program)
+
+(defn- validate-v3!
+  [{:mc/keys [target entry functions] :as module}]
+  (when-not (and (= #{:mc/version :mc/target :mc/entry :mc/functions}
+                    (set (keys module)))
+                 (= 3 (:mc/version module))
+                 (contains? mir/targets target)
+                 (vector? functions)
+                 (seq functions))
+    (reject! :non-canonical-module module))
+  (let [mir-functions
+        (mapv
+         (fn [{:mc/keys [name arity frame-slots frame-policy instructions]
+               :as function}]
+           (when-not (and (= #{:mc/name :mc/arity :mc/frame-slots
+                               :mc/frame-policy :mc/instructions}
+                             (set (keys function)))
+                          (vector? instructions))
+             (reject! :non-canonical-function function))
+           {:mir/name name
+            :mir/arity arity
+            :mir/frame-slots frame-slots
+            :mir/frame-policy frame-policy
+            :mir/instructions (mapv #(->mir-instruction target %) instructions)})
+         functions)]
+    (mir/validate! {:mir/version 3
+                    :mir/target target
+                    :mir/registers :physical
+                    :mir/entry entry
+                    :mir/functions mir-functions}))
+  module)
+
+(defn validate!
+  "Validate and return a closed allocated MC program unchanged. v3 mirrors
+  physical MIR function/frame ownership while retaining target encodings."
+  [{:mc/keys [version] :as program}]
+  (case version
+    2 (validate-v2! program)
+    3 (validate-v3! program)
+    (reject! :unsupported-version program)))

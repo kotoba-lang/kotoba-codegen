@@ -12,7 +12,8 @@
 (defn- encode-branch [{:mir/keys [encoding]} displacement]
   (case encoding
     :x86-64/jz-rel32 (into [0x0f 0x84] (le32 displacement))
-    :x86-64/jmp-rel32 (into [0xe9] (le32 displacement))))
+    :x86-64/jmp-rel32 (into [0xe9] (le32 displacement))
+    :x86-64/call-rel32 (into [0xe8] (le32 displacement))))
 
 (defn- resolve-layout [tokens]
   (let [labels (layout/label-offsets tokens size-of)]
@@ -44,6 +45,18 @@
            (resolve-layout [(layout/label target)
                             0xaa 0xbb
                             (layout/relative-branch :x86-64/jmp-rel32 target)])))))
+
+(deftest direct-calls-reserve-and-resolve-their-architectural-width
+  (let [target :test.function/callee
+        x86 [(layout/relative-branch :x86-64/call-rel32 target)
+             0x90
+             (layout/label target)]
+        arm [(layout/relative-branch :aarch64/bl-imm26 target)
+             (layout/label target)]]
+    (is (= 5 (layout/token-size (first x86))))
+    (is (= [0xe8 0x01 0x00 0x00 0x00 0x90] (resolve-layout x86)))
+    (is (= 4 (layout/token-size (first arm))))
+    (is (= {target 4} (layout/label-offsets arm size-of)))))
 
 (deftest malformed-or-unresolved-layout-fails-closed
   (testing "duplicate labels"
