@@ -6,8 +6,9 @@ Accepted.
 
 ## Context
 
-MIR can remove frame-backed phi transport when a single-phi join is safe to
-coalesce. The resulting edge copy is a physical-register operation. Allowing a
+MIR can remove frame-backed phi transport when a phi edge is safe to coalesce,
+including ordered moves produced by its parallel-copy scheduler. The resulting
+edge copy is a physical-register operation. Allowing a
 backend to infer or silently accept that copy would make MC's closed encoding
 contract incomplete.
 
@@ -23,8 +24,9 @@ MC v2 admits `move` as a selected instruction with the exact shape:
 ```
 
 Target namespaces must match the MC target, registers must satisfy the MIR
-physical profile, and extra keys fail closed. MIR owns when a move is safe;
-codegen owns its canonical selected shape; target backends own its bytes.
+physical profile, and extra keys fail closed. MIR owns when and in which order a
+move is safe; codegen owns its canonical selected shape; target backends own
+its bytes.
 
 ## Consequences
 
