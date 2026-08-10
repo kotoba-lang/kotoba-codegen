@@ -1,0 +1,45 @@
+(ns kotoba.codegen.mc-test
+  (:require [clojure.test :refer [deftest is testing]]
+            [kotoba.codegen.mc :as mc]))
+
+(def program
+  {:mc/version 1
+   :mc/target :x86-64
+   :mc/instructions
+   [{:mc/op :mc/instruction :mc/encoding :x86-64/argument
+     :mir/dst :x86-64/rax :mir/index 0}
+    {:mc/op :mc/instruction :mc/encoding :x86-64/constant
+     :mir/dst :x86-64/rcx :mir/value 1}
+    {:mc/op :mc/instruction :mc/encoding :x86-64/add
+     :mir/dst :x86-64/rdx :mir/left :x86-64/rax :mir/right :x86-64/rcx}
+    {:mc/op :mc/branch-zero :mc/test :x86-64/rdx :mc/target :test.label/zero}
+    {:mc/op :mc/instruction :mc/encoding :x86-64/return :mir/value :x86-64/rdx}
+    {:mir/op :mir/label :mir/id :test.label/zero}
+    {:mc/op :mc/jump :mc/target :test.label/done}
+    {:mir/op :mir/label :mir/id :test.label/done}
+    {:mc/op :mc/instruction :mc/encoding :x86-64/return :mir/value :x86-64/rcx}]})
+
+(deftest canonical-allocated-program-is-admitted
+  (is (= program (mc/validate! program))))
+
+(deftest contract-fails-closed
+  (testing "target and selected encoding must agree"
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (mc/validate! (assoc-in program [:mc/instructions 0 :mc/encoding]
+                                         :aarch64/argument)))))
+  (testing "selected keysets are exact"
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (mc/validate! (assoc-in program [:mc/instructions 0 :ambient/policy]
+                                         true)))))
+  (testing "physical register profile comes from MIR"
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (mc/validate! (assoc-in program [:mc/instructions 0 :mir/dst]
+                                         :aarch64/x0)))))
+  (testing "control flow remains a closed graph"
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (mc/validate! (assoc-in program [:mc/instructions 3 :mc/target]
+                                         :test.label/missing)))))
+  (testing "unknown operations never reach a backend"
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (mc/validate! (assoc-in program [:mc/instructions 0 :mc/op]
+                                         :mc/invented))))))
