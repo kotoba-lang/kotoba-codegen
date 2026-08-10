@@ -3,8 +3,9 @@
             [kotoba.codegen.mc :as mc]))
 
 (def program
-  {:mc/version 1
+  {:mc/version 2
    :mc/target :x86-64
+   :mc/frame-slots 0
    :mc/instructions
    [{:mc/op :mc/instruction :mc/encoding :x86-64/argument
      :mir/dst :x86-64/rax :mir/index 0}
@@ -19,8 +20,23 @@
     {:mir/op :mir/label :mir/id :test.label/done}
     {:mc/op :mc/instruction :mc/encoding :x86-64/return :mir/value :x86-64/rcx}]})
 
+(def spilled-program
+  {:mc/version 2
+   :mc/target :x86-64
+   :mc/frame-slots 1
+   :mc/instructions
+   [{:mc/op :mc/instruction :mc/encoding :x86-64/constant
+     :mir/dst :x86-64/rax :mir/value 42}
+    {:mc/op :mc/instruction :mc/encoding :x86-64/spill-store
+     :mir/src :x86-64/rax :mir/slot 0}
+    {:mc/op :mc/instruction :mc/encoding :x86-64/spill-load
+     :mir/dst :x86-64/rax :mir/slot 0}
+    {:mc/op :mc/instruction :mc/encoding :x86-64/return
+     :mir/value :x86-64/rax}]})
+
 (deftest canonical-allocated-program-is-admitted
-  (is (= program (mc/validate! program))))
+  (is (= program (mc/validate! program)))
+  (is (= spilled-program (mc/validate! spilled-program))))
 
 (deftest contract-fails-closed
   (testing "target and selected encoding must agree"
@@ -42,4 +58,13 @@
   (testing "unknown operations never reach a backend"
     (is (thrown? clojure.lang.ExceptionInfo
                  (mc/validate! (assoc-in program [:mc/instructions 0 :mc/op]
-                                         :mc/invented))))))
+                                         :mc/invented)))))
+  (testing "spill slots stay inside the declared frame"
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (mc/validate! (assoc-in spilled-program
+                                         [:mc/instructions 1 :mir/slot] 1)))))
+  (testing "MC v1 cannot silently omit frame ownership"
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (mc/validate! (-> program
+                                   (assoc :mc/version 1)
+                                   (dissoc :mc/frame-slots)))))))

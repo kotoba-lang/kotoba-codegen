@@ -1,17 +1,20 @@
 (ns kotoba.codegen.mc
   "Closed allocated machine-code program contract.
 
-  MC retains MIR operands after target selection and allocation while making
-  the target encoding choice explicit. Backends own the bytes for each
-  encoding; this namespace owns the admitted data shape."
+  MC retains MIR operands and bounded spill-frame ownership after target
+  selection and allocation while making the target encoding choice explicit.
+  Backends own the bytes for each encoding; this namespace owns the admitted
+  data shape."
   (:require [kotoba.mir :as mir]))
 
-(def version 1)
+(def version 2)
 
 (def ^:private selected-keysets
   {:argument #{:mc/op :mc/encoding :mir/dst :mir/index}
    :constant #{:mc/op :mc/encoding :mir/dst :mir/value}
    :add #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   :spill-load #{:mc/op :mc/encoding :mir/dst :mir/slot}
+   :spill-store #{:mc/op :mc/encoding :mir/src :mir/slot}
    :return #{:mc/op :mc/encoding :mir/value}})
 
 (def ^:private operation-keysets
@@ -59,16 +62,19 @@
       (reject! :unknown-operation instruction))))
 
 (defn validate!
-  "Validate and return a closed allocated MC v1 program unchanged."
-  [{:mc/keys [version target instructions] :as program}]
+  "Validate and return a closed allocated MC v2 program unchanged."
+  [{:mc/keys [version target frame-slots instructions] :as program}]
   (when-not (and (map? program)
-                 (= #{:mc/version :mc/target :mc/instructions}
+                 (= #{:mc/version :mc/target :mc/frame-slots :mc/instructions}
                     (set (keys program)))
-                 (= 1 version)
+                 (= 2 version)
                  (contains? mir/targets target)
+                 (integer? frame-slots)
+                 (<= 0 frame-slots 4095)
                  (vector? instructions))
     (reject! :non-canonical-program program))
   (let [mir-instructions (mapv #(->mir-instruction target %) instructions)]
     (mir/validate! {:mir/version 1 :mir/target target :mir/registers :physical
+                    :mir/frame-slots frame-slots
                     :mir/instructions mir-instructions}))
   program)
