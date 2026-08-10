@@ -110,24 +110,26 @@
        :mir/dst :x86-64/rax :mir/index 0}
       {:mc/op :mc/instruction :mc/encoding :x86-64/return
        :mir/value :x86-64/rax}]}
-    {:mc/name 'main :mc/arity 1 :mc/frame-slots 2
-     :mc/frame-policy :all-vregs
+    {:mc/name 'main :mc/arity 1 :mc/frame-slots 1
+     :mc/frame-policy :call-live
      :mc/instructions
      [{:mc/op :mc/instruction :mc/encoding :x86-64/argument
        :mir/dst :x86-64/rax :mir/index 0}
+      {:mc/op :mc/instruction :mc/encoding :x86-64/constant
+       :mir/dst :x86-64/rcx :mir/value 10}
       {:mc/op :mc/instruction :mc/encoding :x86-64/spill-store
-       :mir/src :x86-64/rax :mir/slot 0}
-      {:mc/op :mc/instruction :mc/encoding :x86-64/spill-load
-       :mir/dst :x86-64/rdi :mir/slot 0}
+       :mir/src :x86-64/rcx :mir/slot 0}
+      {:mc/op :mc/instruction :mc/encoding :x86-64/move
+       :mir/dst :x86-64/rdi :mir/src :x86-64/rax}
       {:mc/op :mc/instruction :mc/encoding :x86-64/call
        :mir/dst :x86-64/rax :mir/callee 'add-one
        :mir/arguments [:x86-64/rdi]}
-      {:mc/op :mc/instruction :mc/encoding :x86-64/spill-store
-       :mir/src :x86-64/rax :mir/slot 1}
       {:mc/op :mc/instruction :mc/encoding :x86-64/spill-load
-       :mir/dst :x86-64/rax :mir/slot 1}
+       :mir/dst :x86-64/rcx :mir/slot 0}
+      {:mc/op :mc/instruction :mc/encoding :x86-64/add
+       :mir/dst :x86-64/rdx :mir/left :x86-64/rcx :mir/right :x86-64/rax}
       {:mc/op :mc/instruction :mc/encoding :x86-64/return
-       :mir/value :x86-64/rax}]}]})
+       :mir/value :x86-64/rdx}]}]})
 
 (deftest v3-mc-preserves-function-frame-and-call-encoding-ownership
   (is (= call-module (mc/validate! call-module)))
@@ -135,18 +137,18 @@
     (is (thrown? clojure.lang.ExceptionInfo
                  (mc/validate!
                   (assoc-in call-module
-                            [:mc/functions 1 :mc/instructions 3 :mc/encoding]
+                            [:mc/functions 1 :mc/instructions 4 :mc/encoding]
                             :aarch64/call))))
     (is (thrown? clojure.lang.ExceptionInfo
                  (mc/validate!
                   (assoc-in call-module
-                            [:mc/functions 1 :mc/instructions 3 :ambient/policy]
+                            [:mc/functions 1 :mc/instructions 4 :ambient/policy]
                             true)))))
   (testing "MIR independently revalidates callee and frame policy"
     (is (thrown? clojure.lang.ExceptionInfo
                  (mc/validate!
                   (assoc-in call-module
-                            [:mc/functions 1 :mc/instructions 3 :mir/callee]
+                            [:mc/functions 1 :mc/instructions 4 :mir/callee]
                             'missing))))
     (is (thrown? clojure.lang.ExceptionInfo
                  (mc/validate!

@@ -7,7 +7,8 @@ allocation and target byte encoders. It verifies target/encoding agreement,
 exact instruction keysets, physical-register profiles, bounded spill frames,
 closed control flow, and the physical-register `move` selected by MIR's
 deterministic parallel-copy scheduler. MC v3 additionally retains independent
-function frames and selected module-local scalar calls.
+function frames and selected module-local scalar calls, preserving MIR's
+explicit `:call-live` versus conservative `:all-vregs` frame policy.
 
 `kotoba.codegen.relocation` owns the closed target-specific relocation request
 passed from instruction selection/layout to object encoders. Requests name the
