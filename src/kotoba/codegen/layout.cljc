@@ -17,6 +17,7 @@
    :x86-64/ja-rel32 6
    :x86-64/jae-rel32 6
    :x86-64/jmp-rel32 5
+   :x86-64/call-rel32 5
    :x86-64/jmp-rel8 2
    :x86-64/jne-rel8 2
    :aarch64/cbz-x0-imm19 4
@@ -31,7 +32,8 @@
    :aarch64/b-lt-imm19 4
    :aarch64/b-gt-imm19 4
    :aarch64/tbnz-imm14 4
-   :aarch64/b-imm26 4})
+   :aarch64/b-imm26 4
+   :aarch64/bl-imm26 4})
 
 (def ^:private relative-branch-ranges
   {:x86-64/jz-rel32 [(- 0x80000000) 0x7fffffff]
@@ -41,6 +43,7 @@
    :x86-64/ja-rel32 [(- 0x80000000) 0x7fffffff]
    :x86-64/jae-rel32 [(- 0x80000000) 0x7fffffff]
    :x86-64/jmp-rel32 [(- 0x80000000) 0x7fffffff]
+   :x86-64/call-rel32 [(- 0x80000000) 0x7fffffff]
    :x86-64/jmp-rel8 [-128 127]
    :x86-64/jne-rel8 [-128 127]
    :aarch64/cbz-x0-imm19 [(- 0x100000) 0xffffc]
@@ -55,7 +58,8 @@
    :aarch64/b-lt-imm19 [(- 0x100000) 0xffffc]
    :aarch64/b-gt-imm19 [(- 0x100000) 0xffffc]
    :aarch64/tbnz-imm14 [(- 0x8000) 0x7ffc]
-   :aarch64/b-imm26 [(- 0x8000000) 0x7fffffc]})
+   :aarch64/b-imm26 [(- 0x8000000) 0x7fffffc]
+   :aarch64/bl-imm26 [(- 0x8000000) 0x7fffffc]})
 
 ;; x86 relative displacements start after the instruction. AArch64 immediate
 ;; branches are relative to the address of the branch instruction itself.
@@ -67,6 +71,7 @@
    :x86-64/ja-rel32 6
    :x86-64/jae-rel32 6
    :x86-64/jmp-rel32 5
+   :x86-64/call-rel32 5
    :x86-64/jmp-rel8 2
    :x86-64/jne-rel8 2
    :aarch64/cbz-x0-imm19 0
@@ -81,7 +86,8 @@
    :aarch64/b-lt-imm19 0
    :aarch64/b-gt-imm19 0
    :aarch64/tbnz-imm14 0
-   :aarch64/b-imm26 0})
+   :aarch64/b-imm26 0
+   :aarch64/bl-imm26 0})
 
 (def ^:private relative-branch-alignments
   {:x86-64/jz-rel32 1
@@ -91,6 +97,7 @@
    :x86-64/ja-rel32 1
    :x86-64/jae-rel32 1
    :x86-64/jmp-rel32 1
+   :x86-64/call-rel32 1
    :x86-64/jmp-rel8 1
    :x86-64/jne-rel8 1
    :aarch64/cbz-x0-imm19 4
@@ -105,7 +112,8 @@
    :aarch64/b-lt-imm19 4
    :aarch64/b-gt-imm19 4
    :aarch64/tbnz-imm14 4
-   :aarch64/b-imm26 4})
+   :aarch64/b-imm26 4
+   :aarch64/bl-imm26 4})
 
 (defn label
   "A zero-width, function-local label token. ID must be a qualified keyword."
