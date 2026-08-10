@@ -2,9 +2,10 @@
 
 MIR-to-machine-code contracts for Kotoba.
 
-`kotoba.codegen.mc` owns the closed allocated MC v1 program shape between MIR
+`kotoba.codegen.mc` owns the closed allocated MC v2 program shape between MIR
 allocation and target byte encoders. It verifies target/encoding agreement,
-exact instruction keysets, physical-register profiles, and closed control flow.
+exact instruction keysets, physical-register profiles, bounded spill frames,
+and closed control flow.
 
 The initial `kotoba.codegen.layout` contract performs deterministic two-pass
 layout for x86-64 and AArch64 label/relative-branch tokens. Backends mix their
