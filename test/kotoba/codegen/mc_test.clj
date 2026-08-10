@@ -38,6 +38,20 @@
   (is (= program (mc/validate! program)))
   (is (= spilled-program (mc/validate! spilled-program))))
 
+(deftest selected-i64-arithmetic-family-is-admitted
+  (doseq [operation [:subtract :multiply :quotient :bit-and :bit-or :bit-xor]]
+    (let [instruction {:mc/op :mc/instruction
+                       :mc/encoding (keyword "x86-64" (name operation))
+                       :mir/dst :x86-64/rdx :mir/left :x86-64/rax
+                       :mir/right :x86-64/rcx}
+          candidate (assoc program :mc/instructions
+                           (conj (subvec (:mc/instructions program) 0 2)
+                                 instruction
+                                 {:mc/op :mc/instruction
+                                  :mc/encoding :x86-64/return
+                                  :mir/value :x86-64/rdx}))]
+      (is (= candidate (mc/validate! candidate))))))
+
 (deftest contract-fails-closed
   (testing "target and selected encoding must agree"
     (is (thrown? clojure.lang.ExceptionInfo

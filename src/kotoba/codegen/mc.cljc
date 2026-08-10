@@ -13,6 +13,12 @@
   {:argument #{:mc/op :mc/encoding :mir/dst :mir/index}
    :constant #{:mc/op :mc/encoding :mir/dst :mir/value}
    :add #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   :subtract #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   :multiply #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   :quotient #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   :bit-and #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   :bit-or #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   :bit-xor #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
    :spill-load #{:mc/op :mc/encoding :mir/dst :mir/slot}
    :spill-store #{:mc/op :mc/encoding :mir/src :mir/slot}
    :return #{:mc/op :mc/encoding :mir/value}})
