@@ -46,6 +46,7 @@
 
 (deftest selected-i64-scalar-family-is-admitted
   (doseq [operation [:subtract :multiply :quotient :bit-and :bit-or :bit-xor
+                     :shift-left :shift-right-signed :shift-right-unsigned
                      :equal :less-than :greater-than :less-or-equal
                      :greater-or-equal]]
     (let [instruction {:mc/op :mc/instruction
