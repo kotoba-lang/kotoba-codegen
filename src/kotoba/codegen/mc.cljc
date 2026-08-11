@@ -17,6 +17,8 @@
    :subtract #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
    :multiply #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
    :quotient #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   :quotient-constant #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right
+                        :mir/divisor}
    :bit-and #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
    :bit-or #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
    :bit-xor #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}

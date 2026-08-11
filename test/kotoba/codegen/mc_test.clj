@@ -69,6 +69,25 @@
                                   :mir/value :x86-64/rdx}))]
       (is (= candidate (mc/validate! candidate))))))
 
+(deftest v3-mc-admits-only-the-exact-constant-divisor-shape
+  (let [instruction {:mc/op :mc/instruction
+                     :mc/encoding :aarch64/quotient-constant
+                     :mir/dst :aarch64/x2 :mir/left :aarch64/x0
+                     :mir/right :aarch64/x1 :mir/divisor 2147483647}
+        candidate {:mc/version 3 :mc/target :aarch64 :mc/entry 'kernel
+                   :mc/functions
+                   [{:mc/name 'kernel :mc/arity 0 :mc/frame-slots 0
+                     :mc/frame-policy :allocator
+                     :mc/instructions
+                     [instruction
+                      {:mc/op :mc/instruction :mc/encoding :aarch64/return
+                       :mir/value :aarch64/x2}]}]}]
+    (is (= candidate (mc/validate! candidate)))
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (mc/validate! (update-in candidate
+                                          [:mc/functions 0 :mc/instructions 0]
+                                          dissoc :mir/divisor))))))
+
 (deftest selected-f64-family-is-admitted
   (doseq [target [:x86-64 :aarch64]
           operation [:f64-add :f64-subtract :f64-multiply :f64-divide
