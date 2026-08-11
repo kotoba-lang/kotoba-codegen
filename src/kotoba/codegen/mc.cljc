@@ -22,6 +22,19 @@
    :shift-left #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
    :shift-right-signed #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
    :shift-right-unsigned #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   :f64-add #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   :f64-subtract #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   :f64-multiply #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   :f64-divide #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   :f64-min #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   :f64-max #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   :f64-sqrt #{:mc/op :mc/encoding :mir/dst :mir/input}
+   :f64-equal #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   :f64-less-than #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   :f64-less-or-equal #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   :f64-greater-than #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   :f64-greater-or-equal #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   :f64-unordered #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
    :equal #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
    :less-than #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
    :greater-than #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
