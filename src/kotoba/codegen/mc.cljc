@@ -19,6 +19,9 @@
    :bit-and #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
    :bit-or #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
    :bit-xor #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   :shift-left #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   :shift-right-signed #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   :shift-right-unsigned #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
    :equal #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
    :less-than #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
    :greater-than #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
