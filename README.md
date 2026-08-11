@@ -9,6 +9,9 @@ closed control flow, and the physical-register `move` selected by MIR's
 deterministic parallel-copy scheduler. MC v3 additionally retains independent
 function frames and selected module-local scalar calls, preserving MIR's
 explicit `:call-live` versus conservative `:all-vregs` frame policy.
+MIR v3 function entries retain exact ABI-register argument markers followed by
+the allocator's cycle-safe parallel moves, so overlapping x86-64 inputs cannot
+be represented as unsafe sequential reassignment.
 
 `kotoba.codegen.relocation` owns the closed target-specific relocation request
 passed from instruction selection/layout to object encoders. Requests name the
