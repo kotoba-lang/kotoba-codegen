@@ -1,6 +1,7 @@
 (ns kotoba.codegen.mc-test
   (:require [clojure.test :refer [deftest is testing]]
-            [kotoba.codegen.mc :as mc]))
+            [kotoba.codegen.mc :as mc]
+            [kotoba.mir :as mir]))
 
 (def program
   {:mc/version 2
@@ -199,3 +200,43 @@
                    (mc/validate!
                     (assoc-in call-module [:mc/functions 1 :mc/frame-policy]
                               :allocator)))))))
+
+(deftest v3-mc-admits-bounded-fifth-entry-argument-spill
+  (doseq [target [:x86-64 :aarch64]]
+    (let [arguments (get mir/call-argument-registers target)
+          [r0 r1 r2] (get mir/physical-registers target)
+          fifth (arguments 4)
+          instruction (fn [operation operands]
+                        (merge {:mc/op :mc/instruction
+                                :mc/encoding (keyword (name target)
+                                                      (name operation))}
+                               operands))
+          module {:mc/version 3
+                  :mc/target target
+                  :mc/entry 'sum-five
+                  :mc/functions
+                  [{:mc/name 'sum-five
+                    :mc/arity 5
+                    :mc/frame-slots 1
+                    :mc/frame-policy :allocator
+                    :mc/instructions
+                    (vec (concat
+                          (map-indexed
+                           (fn [index register]
+                             (instruction :argument
+                                          {:mir/dst register :mir/index index}))
+                           arguments)
+                          [(instruction :spill-store
+                                        {:mir/src fifth :mir/slot 0})
+                           (instruction :add
+                                        {:mir/dst r0 :mir/left r0 :mir/right r1})
+                           (instruction :spill-load
+                                        {:mir/dst r2 :mir/slot 0})
+                           (instruction :add
+                                        {:mir/dst r0 :mir/left r0 :mir/right r2})
+                           (instruction :return {:mir/value r0})]))}]}]
+      (is (= module (mc/validate! module)) target)
+      (is (thrown? clojure.lang.ExceptionInfo
+                   (mc/validate! (assoc-in module
+                                           [:mc/functions 0 :mc/frame-slots] 0)))
+          target))))

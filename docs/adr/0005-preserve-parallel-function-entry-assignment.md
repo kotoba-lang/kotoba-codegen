@@ -18,5 +18,7 @@ non-ABI marker fails closed before reaching an encoder.
 
 On x86-64, a four-live-parameter callee can preserve `rcx` into `r8` before
 assigning the second input into `rcx`; on AArch64 the matching registers require
-no moves. Five-live-parameter fallback remains represented by ABI markers and
-frame stores. Codegen does not claim ownership of allocation or ABI design.
+no moves. Under MIR ADR 0008, an excess live entry input remains represented by
+its ABI marker, a bounded direct frame store, and a lazy load while retaining
+the allocator frame policy. Codegen does not claim ownership of allocation or
+ABI design.

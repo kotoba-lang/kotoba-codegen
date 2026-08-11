@@ -3,7 +3,8 @@
  :decision :preserve-parallel-function-entry-assignment
  :input {:mir/version 3
          :argument-markers :exact-abi-input-registers
-         :entry-copies :parallel-scheduled}
+         :entry-copies :parallel-scheduled
+         :excess-entry-inputs :bounded-lazy-spill}
  :mc {:argument-markers :preserved
       :move-order :preserved
       :validation :project-to-mir}
