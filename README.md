@@ -14,7 +14,9 @@ MIR v3 function entries retain exact ABI-register argument markers followed by
 the allocator's cycle-safe parallel moves, so overlapping x86-64 inputs cannot
 be represented as unsafe sequential reassignment. A fifth live input remains
 under the allocator policy with one stable slot rather than forcing every SSA
-value into a frame slot.
+value into a frame slot. The same closed contract now carries bounded u8/u32
+kernel loads and stores plus subregion derivation; target byte encoders cannot
+receive ambient memory policy or silently reinterpret the proven maximum.
 
 `kotoba.codegen.relocation` owns the closed target-specific relocation request
 passed from instruction selection/layout to object encoders. Requests name the
