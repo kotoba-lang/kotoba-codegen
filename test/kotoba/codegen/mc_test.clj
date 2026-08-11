@@ -130,6 +130,29 @@
                        :mir/value (:mir/dst selected)}]}]
       (is (= candidate (mc/validate! candidate))))))
 
+(deftest mc-preserves-x86-privileged-action-selection
+  (let [program
+        {:mc/version 3 :mc/target :x86-64 :mc/entry 'main
+         :mc/functions
+         [{:mc/name 'main :mc/arity 0 :mc/frame-slots 0
+           :mc/frame-policy :allocator
+           :mc/instructions
+           [{:mc/op :mc/instruction :mc/encoding :x86-64/constant
+             :mir/dst :x86-64/rax :mir/value 1}
+            {:mc/op :mc/instruction :mc/encoding :x86-64/constant
+             :mir/dst :x86-64/rcx :mir/value 2}
+            {:mc/op :mc/instruction :mc/encoding :x86-64/x86-privileged
+             :mir/dst :x86-64/rdx :mir/action :write-msr
+             :mir/arguments [:x86-64/rax :x86-64/rcx]}
+            {:mc/op :mc/instruction :mc/encoding :x86-64/return
+             :mir/value :x86-64/rdx}]}]}]
+    (is (= program (mc/validate! program)))
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (mc/validate! (assoc-in program
+                                         [:mc/functions 0 :mc/instructions 2
+                                          :mir/action]
+                                         :ambient-machine-code))))))
+
 (deftest contract-fails-closed
   (testing "target and selected encoding must agree"
     (is (thrown? clojure.lang.ExceptionInfo

@@ -6,6 +6,7 @@ MIR-to-machine-code contracts for Kotoba.
 allocation and target byte encoders. It verifies target/encoding agreement,
 exact instruction keysets, physical-register profiles, bounded spill frames,
 bounded lazy entry spills for excess scalar ABI inputs, closed control flow,
+the x86-64-only privileged-action selection,
 and the physical-register `move` selected by MIR's
 deterministic parallel-copy scheduler. MC v3 additionally retains independent
 function frames and selected module-local scalar calls, preserving MIR's
