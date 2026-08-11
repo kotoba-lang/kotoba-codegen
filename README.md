@@ -5,13 +5,16 @@ MIR-to-machine-code contracts for Kotoba.
 `kotoba.codegen.mc` owns the closed allocated MC v2/v3 program shapes between MIR
 allocation and target byte encoders. It verifies target/encoding agreement,
 exact instruction keysets, physical-register profiles, bounded spill frames,
-closed control flow, and the physical-register `move` selected by MIR's
+bounded lazy entry spills for excess scalar ABI inputs, closed control flow,
+and the physical-register `move` selected by MIR's
 deterministic parallel-copy scheduler. MC v3 additionally retains independent
 function frames and selected module-local scalar calls, preserving MIR's
 explicit `:call-live` versus conservative `:all-vregs` frame policy.
 MIR v3 function entries retain exact ABI-register argument markers followed by
 the allocator's cycle-safe parallel moves, so overlapping x86-64 inputs cannot
-be represented as unsafe sequential reassignment.
+be represented as unsafe sequential reassignment. A fifth live input remains
+under the allocator policy with one stable slot rather than forcing every SSA
+value into a frame slot.
 
 `kotoba.codegen.relocation` owns the closed target-specific relocation request
 passed from instruction selection/layout to object encoders. Requests name the
