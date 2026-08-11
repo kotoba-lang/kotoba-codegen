@@ -55,6 +55,7 @@
    :spill-store #{:mc/op :mc/encoding :mir/src :mir/slot}
    :move #{:mc/op :mc/encoding :mir/dst :mir/src}
    :call #{:mc/op :mc/encoding :mir/dst :mir/callee :mir/arguments}
+   :tail-call #{:mc/op :mc/encoding :mir/callee :mir/arguments}
    :runtime-call #{:mc/op :mc/encoding :mir/dst :mir/runtime
                    :mir/context-offset :mir/arguments}
    :x86-privileged #{:mc/op :mc/encoding :mir/dst :mir/action :mir/arguments}

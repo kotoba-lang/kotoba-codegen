@@ -262,6 +262,27 @@
                     (assoc-in call-module [:mc/functions 1 :mc/frame-policy]
                               :allocator)))))))
 
+(deftest v3-mc-preserves-terminal-tail-call-ownership
+  (let [module (assoc-in
+                call-module [:mc/functions 1]
+                {:mc/name 'main :mc/arity 1 :mc/frame-slots 1
+                 :mc/frame-policy :all-vregs
+                 :mc/instructions
+                 [{:mc/op :mc/instruction :mc/encoding :x86-64/argument
+                   :mir/dst :x86-64/rdi :mir/index 0}
+                  {:mc/op :mc/instruction :mc/encoding :x86-64/spill-store
+                   :mir/src :x86-64/rdi :mir/slot 0}
+                  {:mc/op :mc/instruction :mc/encoding :x86-64/spill-load
+                   :mir/dst :x86-64/rdi :mir/slot 0}
+                  {:mc/op :mc/instruction :mc/encoding :x86-64/tail-call
+                   :mir/callee 'add-one :mir/arguments [:x86-64/rdi]}]})]
+    (is (= module (mc/validate! module)))
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (mc/validate!
+                  (assoc-in module
+                            [:mc/functions 1 :mc/instructions 3 :mir/dst]
+                            :x86-64/rax))))))
+
 (deftest v3-mc-admits-bounded-fifth-entry-argument-spill
   (doseq [target [:x86-64 :aarch64]]
     (let [arguments (get mir/call-argument-registers target)
