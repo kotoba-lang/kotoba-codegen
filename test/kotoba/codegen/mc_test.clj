@@ -107,14 +107,18 @@
      :mc/frame-policy :allocator
      :mc/instructions
      [{:mc/op :mc/instruction :mc/encoding :x86-64/argument
-       :mir/dst :x86-64/rax :mir/index 0}
+       :mir/dst :x86-64/rdi :mir/index 0}
+      {:mc/op :mc/instruction :mc/encoding :x86-64/move
+       :mir/dst :x86-64/rax :mir/src :x86-64/rdi}
       {:mc/op :mc/instruction :mc/encoding :x86-64/return
        :mir/value :x86-64/rax}]}
     {:mc/name 'main :mc/arity 1 :mc/frame-slots 1
      :mc/frame-policy :call-live
      :mc/instructions
      [{:mc/op :mc/instruction :mc/encoding :x86-64/argument
-       :mir/dst :x86-64/rax :mir/index 0}
+       :mir/dst :x86-64/rdi :mir/index 0}
+      {:mc/op :mc/instruction :mc/encoding :x86-64/move
+       :mir/dst :x86-64/rax :mir/src :x86-64/rdi}
       {:mc/op :mc/instruction :mc/encoding :x86-64/constant
        :mir/dst :x86-64/rcx :mir/value 10}
       {:mc/op :mc/instruction :mc/encoding :x86-64/spill-store
@@ -133,24 +137,34 @@
 
 (deftest v3-mc-preserves-function-frame-and-call-encoding-ownership
   (is (= call-module (mc/validate! call-module)))
-  (testing "target encodings and exact call keysets remain closed"
-    (is (thrown? clojure.lang.ExceptionInfo
-                 (mc/validate!
-                  (assoc-in call-module
-                            [:mc/functions 1 :mc/instructions 4 :mc/encoding]
-                            :aarch64/call))))
-    (is (thrown? clojure.lang.ExceptionInfo
-                 (mc/validate!
-                  (assoc-in call-module
-                            [:mc/functions 1 :mc/instructions 4 :ambient/policy]
-                            true)))))
-  (testing "MIR independently revalidates callee and frame policy"
-    (is (thrown? clojure.lang.ExceptionInfo
-                 (mc/validate!
-                  (assoc-in call-module
-                            [:mc/functions 1 :mc/instructions 4 :mir/callee]
-                            'missing))))
-    (is (thrown? clojure.lang.ExceptionInfo
-                 (mc/validate!
-                  (assoc-in call-module [:mc/functions 1 :mc/frame-policy]
-                            :allocator))))))
+  (let [call-index (first
+                    (keep-indexed
+                     (fn [index instruction]
+                       (when (= :x86-64/call (:mc/encoding instruction)) index))
+                     (get-in call-module [:mc/functions 1 :mc/instructions])))]
+    (testing "target encodings and exact call keysets remain closed"
+      (is (thrown? clojure.lang.ExceptionInfo
+                   (mc/validate!
+                    (assoc-in call-module
+                              [:mc/functions 1 :mc/instructions call-index :mc/encoding]
+                              :aarch64/call))))
+      (is (thrown? clojure.lang.ExceptionInfo
+                   (mc/validate!
+                    (assoc-in call-module
+                              [:mc/functions 1 :mc/instructions call-index :ambient/policy]
+                              true)))))
+    (testing "MIR independently revalidates entry ABI, callee, and frame policy"
+      (is (thrown? clojure.lang.ExceptionInfo
+                   (mc/validate!
+                    (assoc-in call-module
+                              [:mc/functions 0 :mc/instructions 0 :mir/dst]
+                              :x86-64/rax))))
+      (is (thrown? clojure.lang.ExceptionInfo
+                   (mc/validate!
+                    (assoc-in call-module
+                              [:mc/functions 1 :mc/instructions call-index :mir/callee]
+                              'missing))))
+      (is (thrown? clojure.lang.ExceptionInfo
+                   (mc/validate!
+                    (assoc-in call-module [:mc/functions 1 :mc/frame-policy]
+                              :allocator)))))))
