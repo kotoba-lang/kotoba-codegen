@@ -35,6 +35,16 @@
    :f64-greater-than #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
    :f64-greater-or-equal #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
    :f64-unordered #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   :kernel-load-u8 #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
+                     :mir/index :mir/maximum}
+   :kernel-store-u8 #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
+                      :mir/index :mir/stored :mir/maximum}
+   :kernel-load-u32 #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
+                      :mir/index :mir/maximum}
+   :kernel-store-u32 #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
+                       :mir/index :mir/stored :mir/maximum}
+   :kernel-subregion #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
+                       :mir/offset :mir/size}
    :equal #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
    :less-than #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
    :greater-than #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}

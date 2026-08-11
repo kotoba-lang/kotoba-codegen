@@ -92,6 +92,37 @@
                        :mir/value register}]}]
       (is (= candidate (mc/validate! candidate))))))
 
+(deftest selected-bounded-kernel-memory-family-is-admitted
+  (doseq [[target [dst base length index stored]]
+          [[:x86-64 [:x86-64/rax :x86-64/rax :x86-64/rcx
+                     :x86-64/rdx :x86-64/r8]]
+           [:aarch64 [:aarch64/x0 :aarch64/x0 :aarch64/x1
+                      :aarch64/x2 :aarch64/x3]]]
+          instruction
+          [{:mc/op :mc/instruction :operation :kernel-load-u8 :mir/dst dst
+            :mir/base base :mir/length length :mir/index index :mir/maximum 512}
+           {:mc/op :mc/instruction :operation :kernel-load-u32 :mir/dst dst
+            :mir/base base :mir/length length :mir/index index :mir/maximum 512}
+           {:mc/op :mc/instruction :operation :kernel-store-u8 :mir/dst stored
+            :mir/base base :mir/length length :mir/index index :mir/stored stored
+            :mir/maximum 4096}
+           {:mc/op :mc/instruction :operation :kernel-store-u32 :mir/dst stored
+            :mir/base base :mir/length length :mir/index index :mir/stored stored
+            :mir/maximum 512}
+           {:mc/op :mc/instruction :operation :kernel-subregion :mir/dst dst
+            :mir/base base :mir/length length :mir/offset index :mir/size stored}]]
+    (let [operation (:operation instruction)
+          selected (-> instruction
+                       (dissoc :operation)
+                       (assoc :mc/encoding (keyword (name target) (name operation))))
+          candidate {:mc/version 2 :mc/target target :mc/frame-slots 0
+                     :mc/instructions
+                     [selected
+                      {:mc/op :mc/instruction
+                       :mc/encoding (keyword (name target) "return")
+                       :mir/value (:mir/dst selected)}]}]
+      (is (= candidate (mc/validate! candidate))))))
+
 (deftest contract-fails-closed
   (testing "target and selected encoding must agree"
     (is (thrown? clojure.lang.ExceptionInfo
