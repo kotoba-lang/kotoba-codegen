@@ -73,7 +73,7 @@
   (let [instruction {:mc/op :mc/instruction
                      :mc/encoding :aarch64/quotient-constant
                      :mir/dst :aarch64/x2 :mir/left :aarch64/x0
-                     :mir/right :aarch64/x1 :mir/divisor 2147483647}
+                     :mir/divisor 2147483647}
         candidate {:mc/version 3 :mc/target :aarch64 :mc/entry 'kernel
                    :mc/functions
                    [{:mc/name 'kernel :mc/arity 0 :mc/frame-slots 0
@@ -86,7 +86,12 @@
     (is (thrown? clojure.lang.ExceptionInfo
                  (mc/validate! (update-in candidate
                                           [:mc/functions 0 :mc/instructions 0]
-                                          dissoc :mir/divisor))))))
+                                          dissoc :mir/divisor))))
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (mc/validate! (assoc-in candidate
+                                         [:mc/functions 0 :mc/instructions 0
+                                          :mir/right]
+                                         :aarch64/x1))))))
 
 (deftest selected-f64-family-is-admitted
   (doseq [target [:x86-64 :aarch64]
