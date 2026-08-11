@@ -54,6 +54,8 @@
    :spill-store #{:mc/op :mc/encoding :mir/src :mir/slot}
    :move #{:mc/op :mc/encoding :mir/dst :mir/src}
    :call #{:mc/op :mc/encoding :mir/dst :mir/callee :mir/arguments}
+   :runtime-call #{:mc/op :mc/encoding :mir/dst :mir/runtime
+                   :mir/context-offset :mir/arguments}
    :return #{:mc/op :mc/encoding :mir/value}})
 
 (def ^:private operation-keysets

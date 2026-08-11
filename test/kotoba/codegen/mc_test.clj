@@ -271,3 +271,29 @@
                    (mc/validate! (assoc-in module
                                            [:mc/functions 0 :mc/frame-slots] 0)))
           target))))
+
+(deftest mc-preserves-the-closed-runtime-call-selection
+  (let [runtime-program
+        {:mc/version 2
+         :mc/target :x86-64
+         :mc/frame-slots 0
+         :mc/instructions
+         [{:mc/op :mc/instruction :mc/encoding :x86-64/argument
+           :mir/dst :x86-64/rsi :mir/index 0}
+          {:mc/op :mc/instruction :mc/encoding :x86-64/runtime-call
+           :mir/dst :x86-64/rax :mir/runtime :vector-count
+           :mir/context-offset 168 :mir/arguments [:x86-64/rsi]}
+          {:mc/op :mc/instruction :mc/encoding :x86-64/return
+           :mir/value :x86-64/rax}]}]
+    (is (= runtime-program (mc/validate! runtime-program)))
+    (testing "the target encoding namespace remains exact"
+      (is (thrown? clojure.lang.ExceptionInfo
+                   (mc/validate!
+                    (assoc-in runtime-program [:mc/instructions 1 :mc/encoding]
+                              :aarch64/runtime-call)))))
+    (testing "MIR revalidates the selected context-table slot"
+      (is (thrown? clojure.lang.ExceptionInfo
+                   (mc/validate!
+                    (assoc-in runtime-program
+                              [:mc/instructions 1 :mir/context-offset]
+                              176)))))))
