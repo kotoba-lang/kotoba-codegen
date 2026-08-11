@@ -38,6 +38,13 @@
 (deftest canonical-allocated-program-is-admitted
   (is (= program (mc/validate! program)))
   (is (= spilled-program (mc/validate! spilled-program)))
+  (let [literal (assoc program :mc/instructions
+                       [{:mc/op :mc/instruction
+                         :mc/encoding :x86-64/data-address
+                         :mir/dst :x86-64/rax :mir/content "hello😀"}
+                        {:mc/op :mc/instruction :mc/encoding :x86-64/return
+                         :mir/value :x86-64/rax}])]
+    (is (= literal (mc/validate! literal))))
   (let [moved (assoc program :mc/instructions
                      [{:mc/op :mc/instruction :mc/encoding :x86-64/move
                        :mir/dst :x86-64/rcx :mir/src :x86-64/rax}
