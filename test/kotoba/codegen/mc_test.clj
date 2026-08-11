@@ -297,3 +297,25 @@
                     (assoc-in runtime-program
                               [:mc/instructions 1 :mir/context-offset]
                               176)))))))
+
+(deftest mc-preserves-the-closed-capability-call-selection
+  (let [program {:mc/version 2
+                 :mc/target :x86-64
+                 :mc/frame-slots 0
+                 :mc/instructions
+                 [{:mc/op :mc/instruction :mc/encoding :x86-64/argument
+                   :mir/dst :x86-64/r8 :mir/index 0}
+                  {:mc/op :mc/instruction
+                   :mc/encoding :x86-64/capability-call
+                   :mir/dst :x86-64/rax :mir/capability 7
+                   :mir/kind :result-i64 :mir/context-offset 128
+                   :mir/arguments [:x86-64/r8]}
+                  {:mc/op :mc/instruction :mc/encoding :x86-64/return
+                   :mir/value :x86-64/rax}]}]
+    (is (= program (mc/validate! program)))
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (mc/validate!
+                  (assoc-in program [:mc/instructions 1 :mir/kind] :i64))))
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (mc/validate!
+                  (assoc-in program [:mc/instructions 1 :mir/capability] 256))))))

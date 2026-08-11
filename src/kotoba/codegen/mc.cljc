@@ -56,6 +56,8 @@
    :call #{:mc/op :mc/encoding :mir/dst :mir/callee :mir/arguments}
    :runtime-call #{:mc/op :mc/encoding :mir/dst :mir/runtime
                    :mir/context-offset :mir/arguments}
+   :capability-call #{:mc/op :mc/encoding :mir/dst :mir/capability
+                      :mir/kind :mir/context-offset :mir/arguments}
    :return #{:mc/op :mc/encoding :mir/value}})
 
 (def ^:private operation-keysets
