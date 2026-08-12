@@ -69,6 +69,22 @@
                                   :mir/value :x86-64/rdx}))]
       (is (= candidate (mc/validate! candidate))))))
 
+(deftest aarch64-fused-multiply-family-has-an-exact-ternary-shape
+  (doseq [operation [:multiply-add :multiply-subtract]]
+    (let [instruction {:mc/op :mc/instruction
+                       :mc/encoding (keyword "aarch64" (name operation))
+                       :mir/dst :aarch64/x0 :mir/left :aarch64/x1
+                       :mir/right :aarch64/x2 :mir/addend :aarch64/x3}
+          candidate {:mc/version 2 :mc/target :aarch64 :mc/frame-slots 0
+                     :mc/instructions
+                     [instruction
+                      {:mc/op :mc/instruction :mc/encoding :aarch64/return
+                       :mir/value :aarch64/x0}]}]
+      (is (= candidate (mc/validate! candidate)) operation)
+      (is (thrown? clojure.lang.ExceptionInfo
+                   (mc/validate! (update-in candidate [:mc/instructions 0]
+                                            dissoc :mir/addend))) operation))))
+
 (deftest v3-mc-admits-only-the-exact-constant-divisor-shape
   (let [instruction {:mc/op :mc/instruction
                      :mc/encoding :aarch64/quotient-constant
