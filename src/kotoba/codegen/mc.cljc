@@ -47,6 +47,13 @@
                       :mir/index :mir/maximum}
    :kernel-store-u32 #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
                        :mir/index :mir/stored :mir/maximum}
+   ;; The lock pair carries the load's fields. No `:mir/stored`: what gets
+   ;; written is fixed by the operation -- 1 to acquire, 0 to release -- which
+   ;; is the difference between a lock and a compare-exchange.
+   :kernel-try-lock-u32 #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
+                          :mir/index :mir/maximum}
+   :kernel-unlock-u32 #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
+                        :mir/index :mir/maximum}
    :kernel-subregion #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
                        :mir/offset :mir/size}
    :equal #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
