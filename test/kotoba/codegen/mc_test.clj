@@ -189,6 +189,18 @@
                                  :mc/parameters [:aarch64/x19 :aarch64/x20]}
                                 {:mc/op :mc/recur
                                  :mc/arguments [:aarch64/x19 :aarch64/x20]}])
+                     (assoc-in candidate [:mc/functions 0 :mc/instructions]
+                               [(nth instructions 0)
+                                (nth instructions 1)
+                                {:mc/op :mc/reentry
+                                 :mc/parameters [:aarch64/x0 :aarch64/x0]}
+                                {:mc/op :mc/recur
+                                 :mc/arguments [:aarch64/x0 :aarch64/x0]}])
+                     (update-in candidate [:mc/functions 0 :mc/instructions]
+                                conj
+                                {:mc/op :mc/instruction
+                                 :mc/encoding :aarch64/constant
+                                 :mir/dst :aarch64/x2 :mir/value 1})
                      (assoc candidate :mc/target :x86-64)]]
       (is (thrown? clojure.lang.ExceptionInfo (mc/validate! invalid))))))
 
