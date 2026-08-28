@@ -133,8 +133,26 @@
                    (mc/validate!
                     (assoc-in candidate [:mc/functions 0 :mc/instructions 1]
                               invalid)))))
-    (is (thrown? clojure.lang.ExceptionInfo
-                 (mc/validate! (assoc candidate :mc/target :x86-64))))
+    (let [x86-candidate
+          {:mc/version 3 :mc/target :x86-64 :mc/entry 'kernel
+           :mc/functions
+           [{:mc/name 'kernel :mc/arity 1 :mc/frame-slots 0
+             :mc/frame-policy :allocator
+             :mc/instructions
+             [{:mc/op :mc/instruction :mc/encoding :x86-64/argument
+               :mir/dst :x86-64/rdi :mir/index 0}
+              {:mc/op :mc/branch-nonzero :mc/test :x86-64/rdi
+               :mc/target :test.label/nonzero}
+              {:mc/op :mc/instruction :mc/encoding :x86-64/return
+               :mir/value :x86-64/rdi}
+              {:mir/op :mir/label :mir/id :test.label/nonzero}
+              {:mc/op :mc/instruction :mc/encoding :x86-64/return
+               :mir/value :x86-64/rdi}]}]}]
+      (is (= :target-selected-operation-target-mismatch
+             (try (mc/validate! x86-candidate)
+                  nil
+                  (catch clojure.lang.ExceptionInfo error
+                    (:problem (ex-data error)))))))
     (is (thrown? clojure.lang.ExceptionInfo
                  (mc/validate!
                   {:mc/version 2 :mc/target :aarch64 :mc/frame-slots 0
