@@ -74,7 +74,9 @@
    :return #{:mc/op :mc/encoding :mir/value}})
 
 (def ^:private operation-keysets
-  {:mc/branch-zero #{:mc/op :mc/test :mc/target}
+  {:mc/reentry #{:mc/op :mc/parameters}
+   :mc/recur #{:mc/op :mc/arguments}
+   :mc/branch-zero #{:mc/op :mc/test :mc/target}
    :mc/branch-nonzero #{:mc/op :mc/test :mc/target}
    :mc/jump #{:mc/op :mc/target}})
 
@@ -96,6 +98,18 @@
   (if (= :mir/label (:mir/op instruction))
     instruction
     (case (:mc/op instruction)
+      :mc/reentry
+      (do
+        (when-not (= (get operation-keysets :mc/reentry) (set (keys instruction)))
+          (reject! :non-canonical-reentry instruction))
+        {:mir/op :mir/reentry :mir/parameters (:mc/parameters instruction)})
+
+      :mc/recur
+      (do
+        (when-not (= (get operation-keysets :mc/recur) (set (keys instruction)))
+          (reject! :non-canonical-recur instruction))
+        {:mir/op :mir/recur :mir/arguments (:mc/arguments instruction)})
+
       :mc/instruction
       (let [operation (selected-operation target instruction)]
         (-> instruction

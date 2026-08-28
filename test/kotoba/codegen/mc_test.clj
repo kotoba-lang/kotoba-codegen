@@ -159,6 +159,51 @@
                    :mc/instructions
                    [branch {:mir/op :mir/label :mir/id :test.label/nonzero}]})))))
 
+(deftest v3-aarch64-direct-reentry-is-explicit-and-closed
+  (let [instructions
+        [{:mc/op :mc/instruction :mc/encoding :aarch64/argument
+          :mir/dst :aarch64/x0 :mir/index 0}
+         {:mc/op :mc/instruction :mc/encoding :aarch64/argument
+          :mir/dst :aarch64/x1 :mir/index 1}
+         {:mc/op :mc/reentry :mc/parameters [:aarch64/x0 :aarch64/x1]}
+         {:mc/op :mc/recur :mc/arguments [:aarch64/x0 :aarch64/x1]}]
+        candidate {:mc/version 3 :mc/target :aarch64 :mc/entry 'swap
+                   :mc/functions
+                   [{:mc/name 'swap :mc/arity 2 :mc/frame-slots 0
+                     :mc/frame-policy :call-live :mc/instructions instructions}]}]
+    (is (= candidate (mc/validate! candidate)))
+    (doseq [invalid [(assoc-in candidate [:mc/functions 0 :mc/instructions 2
+                                          :mc/parameters] [:aarch64/x0])
+                     (assoc-in candidate [:mc/functions 0 :mc/instructions 3
+                                          :mc/arguments]
+                               [:aarch64/x1 :aarch64/x0])
+                     (assoc-in candidate [:mc/functions 0 :mc/instructions]
+                               [(nth instructions 2)
+                                (nth instructions 0)
+                                (nth instructions 1)
+                                (nth instructions 3)])
+                     (assoc-in candidate [:mc/functions 0 :mc/instructions]
+                               [(nth instructions 0)
+                                (nth instructions 1)
+                                {:mc/op :mc/reentry
+                                 :mc/parameters [:aarch64/x19 :aarch64/x20]}
+                                {:mc/op :mc/recur
+                                 :mc/arguments [:aarch64/x19 :aarch64/x20]}])
+                     (assoc-in candidate [:mc/functions 0 :mc/instructions]
+                               [(nth instructions 0)
+                                (nth instructions 1)
+                                {:mc/op :mc/reentry
+                                 :mc/parameters [:aarch64/x0 :aarch64/x0]}
+                                {:mc/op :mc/recur
+                                 :mc/arguments [:aarch64/x0 :aarch64/x0]}])
+                     (update-in candidate [:mc/functions 0 :mc/instructions]
+                                conj
+                                {:mc/op :mc/instruction
+                                 :mc/encoding :aarch64/constant
+                                 :mir/dst :aarch64/x2 :mir/value 1})
+                     (assoc candidate :mc/target :x86-64)]]
+      (is (thrown? clojure.lang.ExceptionInfo (mc/validate! invalid))))))
+
 (deftest selected-f64-family-is-admitted
   (doseq [target [:x86-64 :aarch64]
           operation [:f64-add :f64-subtract :f64-multiply :f64-divide
