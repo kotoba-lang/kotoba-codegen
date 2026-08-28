@@ -109,6 +109,38 @@
                                           :mir/right]
                                          :aarch64/x1))))))
 
+(deftest v3-aarch64-mc-admits-only-the-exact-branch-nonzero-shape
+  (let [branch {:mc/op :mc/branch-nonzero :mc/test :aarch64/x0
+                :mc/target :test.label/nonzero}
+        candidate {:mc/version 3 :mc/target :aarch64 :mc/entry 'kernel
+                   :mc/functions
+                   [{:mc/name 'kernel :mc/arity 1 :mc/frame-slots 0
+                     :mc/frame-policy :allocator
+                     :mc/instructions
+                     [{:mc/op :mc/instruction :mc/encoding :aarch64/argument
+                       :mir/dst :aarch64/x0 :mir/index 0}
+                      branch
+                      {:mc/op :mc/instruction :mc/encoding :aarch64/return
+                       :mir/value :aarch64/x0}
+                      {:mir/op :mir/label :mir/id :test.label/nonzero}
+                      {:mc/op :mc/instruction :mc/encoding :aarch64/return
+                       :mir/value :aarch64/x0}]}]}]
+    (is (= candidate (mc/validate! candidate)))
+    (doseq [invalid [(assoc branch :extra true)
+                     (dissoc branch :mc/test)
+                     (assoc branch :mc/target :test.label/missing)]]
+      (is (thrown? clojure.lang.ExceptionInfo
+                   (mc/validate!
+                    (assoc-in candidate [:mc/functions 0 :mc/instructions 1]
+                              invalid)))))
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (mc/validate! (assoc candidate :mc/target :x86-64))))
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (mc/validate!
+                  {:mc/version 2 :mc/target :aarch64 :mc/frame-slots 0
+                   :mc/instructions
+                   [branch {:mir/op :mir/label :mir/id :test.label/nonzero}]})))))
+
 (deftest selected-f64-family-is-admitted
   (doseq [target [:x86-64 :aarch64]
           operation [:f64-add :f64-subtract :f64-multiply :f64-divide
