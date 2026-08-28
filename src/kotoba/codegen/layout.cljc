@@ -23,6 +23,7 @@
    :aarch64/cbz-x0-imm19 4
    :aarch64/cbz-x1-imm19 4
    :aarch64/cbz-imm19 4
+   :aarch64/cbnz-imm19 4
    :aarch64/cbnz-x1-imm19 4
    :aarch64/cbnz-x16-imm19 4
    :aarch64/b-eq-imm19 4
@@ -49,6 +50,7 @@
    :aarch64/cbz-x0-imm19 [(- 0x100000) 0xffffc]
    :aarch64/cbz-x1-imm19 [(- 0x100000) 0xffffc]
    :aarch64/cbz-imm19 [(- 0x100000) 0xffffc]
+   :aarch64/cbnz-imm19 [(- 0x100000) 0xffffc]
    :aarch64/cbnz-x1-imm19 [(- 0x100000) 0xffffc]
    :aarch64/cbnz-x16-imm19 [(- 0x100000) 0xffffc]
    :aarch64/b-eq-imm19 [(- 0x100000) 0xffffc]
@@ -77,6 +79,7 @@
    :aarch64/cbz-x0-imm19 0
    :aarch64/cbz-x1-imm19 0
    :aarch64/cbz-imm19 0
+   :aarch64/cbnz-imm19 0
    :aarch64/cbnz-x1-imm19 0
    :aarch64/cbnz-x16-imm19 0
    :aarch64/b-eq-imm19 0
@@ -103,6 +106,7 @@
    :aarch64/cbz-x0-imm19 4
    :aarch64/cbz-x1-imm19 4
    :aarch64/cbz-imm19 4
+   :aarch64/cbnz-imm19 4
    :aarch64/cbnz-x1-imm19 4
    :aarch64/cbnz-x16-imm19 4
    :aarch64/b-eq-imm19 4
@@ -186,10 +190,10 @@
             (throw (ex-info "AArch64 TBNZ requires [register bit-index] operands"
                             {:phase :layout :token token}))))
 
-        :aarch64/cbz-imm19
+        (:aarch64/cbz-imm19 :aarch64/cbnz-imm19)
         (let [[reg :as operands] (:mir/operands token)]
           (when-not (and (= 1 (count operands)) (integer? reg) (<= 0 reg 31))
-            (throw (ex-info "AArch64 CBZ requires [register] operands"
+            (throw (ex-info "AArch64 CBZ/CBNZ requires [register] operands"
                             {:phase :layout :token token}))))
 
         (when (contains? token :mir/operands)

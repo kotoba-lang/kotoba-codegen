@@ -90,6 +90,27 @@
                            [(layout/relative-branch :aarch64/b-imm26
                                                     :test.label/a [0])]
                            size-of))))
+  (testing "AArch64 generic CBNZ carries one bounded register operand"
+    (doseq [register [0 19 31]]
+      (let [token (layout/relative-branch :aarch64/cbnz-imm19
+                                          :test.label/a [register])]
+        (is (= 4 (layout/token-size token)))
+        (is (= {} (layout/label-offsets [token] size-of)))))
+    (doseq [operands [nil [] [0 1] ["0"] [-1] [32]]]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"CBZ/CBNZ requires"
+                            (layout/label-offsets
+                             [(layout/relative-branch :aarch64/cbnz-imm19
+                                                      :test.label/a operands)]
+                             size-of))))
+    (let [token (layout/relative-branch :aarch64/cbnz-imm19 :test.label/a [19])
+          resolve-at (fn [target]
+                       (layout/resolve-tokens [token] size-of {:test.label/a target}
+                                              (fn [_ _] [0 0 0 0])
+                                              (fn [value _] [value])))]
+      (is (= [0 0 0 0] (resolve-at (- 0x100000))))
+      (is (= [0 0 0 0] (resolve-at 0xffffc)))
+      (doseq [target [2 0x100000 (- 0x100004)]]
+        (is (thrown? clojure.lang.ExceptionInfo (resolve-at target))))))
   (testing "unknown MIR operations never fall through as backend-owned maps"
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"unknown canonical MIR"
                           (layout/label-offsets [{:mir/op :mir/invented}] (constantly 1)))))
