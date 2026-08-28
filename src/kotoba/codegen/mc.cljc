@@ -75,6 +75,7 @@
 
 (def ^:private operation-keysets
   {:mc/branch-zero #{:mc/op :mc/test :mc/target}
+   :mc/branch-nonzero #{:mc/op :mc/test :mc/target}
    :mc/jump #{:mc/op :mc/target}})
 
 (defn- reject! [problem instruction]
@@ -107,6 +108,14 @@
                      (set (keys instruction)))
           (reject! :non-canonical-branch instruction))
         {:mir/op :mir/branch-zero :mir/test (:mc/test instruction)
+         :mir/target (:mc/target instruction)})
+
+      :mc/branch-nonzero
+      (do
+        (when-not (= (get operation-keysets :mc/branch-nonzero)
+                     (set (keys instruction)))
+          (reject! :non-canonical-branch instruction))
+        {:mir/op :mir/branch-nonzero :mir/test (:mc/test instruction)
          :mir/target (:mc/target instruction)})
 
       :mc/jump
