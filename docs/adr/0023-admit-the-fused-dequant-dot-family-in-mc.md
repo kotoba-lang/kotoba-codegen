@@ -1,11 +1,11 @@
-# ADR 0010: admit the fused dequantize-and-dot family in MC
+# ADR 0023: admit the fused dequantize-and-dot family in MC
 
 Status: accepted. Date: 2026-09-02.
 
 ## Context
 
 ADR 0009 admitted `:kernel-dot-f32` with the keyset two regions, a ceiling and
-a count. kotoba-gmir ADR 0013 adds three operations of the same shape.
+a count. kotoba-gmir ADR 0023 adds three operations of the same shape.
 
 ## Decision
 
