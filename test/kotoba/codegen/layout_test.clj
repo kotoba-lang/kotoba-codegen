@@ -138,3 +138,70 @@
                           (layout/resolve-tokens tokens size-of labels
                                                  (fn [_ _] [0xe9])
                                                  (fn [token _] [token]))))))
+
+;; boot-scratch ───────────────────────────────────────────────────────────────
+
+(defn- lea-rip [reg displacement]
+  (vec (concat [(bit-or 0x48 (if (>= reg 8) 4 0))
+                0x8d
+                (bit-or 0x05 (bit-shift-left (bit-and reg 7) 3))]
+               (le32 displacement))))
+
+(defn- lea-encode-branch [{:mir/keys [encoding operands]} displacement]
+  (case encoding
+    :x86-64/lea-rip-label (lea-rip (first operands) displacement)
+    :x86-64/jmp-rel32 (into [0xe9] (le32 displacement))))
+
+(defn- lea-resolve [tokens]
+  (let [labels (layout/label-offsets tokens size-of)]
+    (layout/resolve-tokens tokens size-of labels lea-encode-branch
+                           (fn [token _position] [token]))))
+
+(deftest boot-scratch-a-rip-relative-lea-is-seven-bytes-measured-from-its-end
+  ;; kotoba-gmir ADR-0013: the address of a function is a label position the
+  ;; first pass has not computed yet, which is what this table owns. The
+  ;; displacement is measured from the END of the instruction -- the trap here
+  ;; is a bias of three (the byte count before the displacement field).
+  (let [target :test.label/helper
+        tokens [(layout/relative-branch :x86-64/lea-rip-label target [0])
+                0xaa 0xbb
+                (layout/label target)
+                0xcc]]
+    (is (= 7 (layout/token-size (layout/relative-branch
+                                 :x86-64/lea-rip-label target [0]))))
+    (is (= {target 9} (layout/label-offsets tokens size-of)))
+    ;; The instruction ends at 7, the label is at 9, so the displacement is 2.
+    (is (= (vec (concat (lea-rip 0 2) [0xaa 0xbb 0xcc])) (lea-resolve tokens)))))
+
+(deftest boot-scratch-a-backward-lea-is-negative-and-an-extended-register-sets-rex-r
+  (let [target :test.label/before
+        tokens [(layout/label target)
+                0x90
+                (layout/relative-branch :x86-64/lea-rip-label target [10])]]
+    ;; The label is at 0; the instruction starts at 1 and ends at 8.
+    (is (= (vec (concat [0x90] (lea-rip 10 -8))) (lea-resolve tokens)))
+    (testing "REX.R and a ModRM reg field of 010 -- r10, not rdx"
+      (is (= [0x4c 0x8d 0x15] (subvec (lea-rip 10 0) 0 3))))))
+
+(deftest boot-scratch-the-lea-token-requires-exactly-one-register-code
+  (doseq [[label operands]
+          [["no operands at all" nil]
+           ["two registers" [0 1]]
+           ["a register keyword rather than a code" [:x86-64/rax]]
+           ["a code past the sixteen" [16]]
+           ["a negative code" [-1]]]]
+    (testing label
+      (let [token (cond-> {:mir/op :mir/relative-branch
+                           :mir/encoding :x86-64/lea-rip-label
+                           :mir/target :test.label/x}
+                    operands (assoc :mir/operands operands))]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo #"LEA RIP-relative|relative branch"
+             (layout/label-offsets [token] size-of))
+            label)))))
+
+(deftest boot-scratch-an-unknown-lea-target-fails-closed
+  (is (thrown-with-msg?
+       clojure.lang.ExceptionInfo #"unknown label"
+       (lea-resolve [(layout/relative-branch :x86-64/lea-rip-label
+                                             :test.label/absent [0])]))))

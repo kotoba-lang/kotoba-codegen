@@ -21,6 +21,14 @@
    ;; program counter.
    :rodata-address #{:mc/op :mc/encoding :mir/dst :mir/content
                      :mir/rodata-encoding}
+   ;; boot-scratch: the address of a FUNCTION in the same module (kotoba-gmir
+   ;; ADR-0013). Neither of the two above: a literal's address resolves
+   ;; against a pool this contract does not name, and this one resolves
+   ;; against a label the module already has -- the same `:mir/function` a
+   ;; `:call` carries as `:mir/callee`, which is why the key is a name and not
+   ;; a content string. A `:rodata-address` that grew a `:mir/function`, or
+   ;; this one that grew a `:mir/content`, is refused: the keysets are exact.
+   :function-address #{:mc/op :mc/encoding :mir/dst :mir/function}
    :add #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
    :subtract #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
    :multiply #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
