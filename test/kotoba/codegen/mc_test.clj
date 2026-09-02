@@ -234,6 +234,36 @@
                        :mir/value register}]}]
       (is (= candidate (mc/validate! candidate))))))
 
+(deftest selected-f32-family-is-admitted
+  (doseq [target [:x86-64 :aarch64]
+          operation [:f32-add :f32-subtract :f32-multiply :f32-divide
+                     :f32-min :f32-max :f32-equal :f32-less-than
+                     :f32-less-or-equal :f32-greater-than
+                     :f32-greater-or-equal :f32-unordered]]
+    (let [[dst left right] (if (= :x86-64 target)
+                             [:x86-64/rdx :x86-64/rax :x86-64/rcx]
+                             [:aarch64/x2 :aarch64/x0 :aarch64/x1])
+          candidate {:mc/version 2 :mc/target target :mc/frame-slots 0
+                     :mc/instructions
+                     [{:mc/op :mc/instruction
+                       :mc/encoding (keyword (name target) (name operation))
+                       :mir/dst dst :mir/left left :mir/right right}
+                      {:mc/op :mc/instruction
+                       :mc/encoding (keyword (name target) "return")
+                       :mir/value dst}]}]
+      (is (= candidate (mc/validate! candidate)))))
+  (doseq [[target register] [[:x86-64 :x86-64/rax]
+                             [:aarch64 :aarch64/x0]]]
+    (let [candidate {:mc/version 2 :mc/target target :mc/frame-slots 0
+                     :mc/instructions
+                     [{:mc/op :mc/instruction
+                       :mc/encoding (keyword (name target) "f32-sqrt")
+                       :mir/dst register :mir/input register}
+                      {:mc/op :mc/instruction
+                       :mc/encoding (keyword (name target) "return")
+                       :mir/value register}]}]
+      (is (= candidate (mc/validate! candidate))))))
+
 (deftest selected-bounded-kernel-memory-family-is-admitted
   (doseq [[target [dst base length index stored]]
           [[:x86-64 [:x86-64/rax :x86-64/rax :x86-64/rcx
