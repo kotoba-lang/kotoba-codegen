@@ -1,5 +1,6 @@
 (ns kotoba.codegen.mc-test
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [clojure.string]
+            [clojure.test :refer [deftest is testing]]
             [kotoba.codegen.mc :as mc]
             [kotoba.mir :as mir]))
 
@@ -264,6 +265,47 @@
                        :mc/encoding (keyword (name target) "return")
                        :mir/value (:mir/dst selected)}]}]
       (is (= candidate (mc/validate! candidate))))))
+
+(deftest memwidth-families-are-admitted-with-their-siblings-keyset
+  ;; Every operation here carries exactly the fields `kernel-load-u8` and
+  ;; `kernel-store-u8` already did. The keyset table is exact-match, so an
+  ;; operation absent from it is rejected as `:non-canonical-instruction` even
+  ;; though its shape is identical -- which is why these twelve entries have to
+  ;; be written down rather than derived from a width.
+  (let [store? #(clojure.string/includes? (name %) "store")
+        window (for [kind ["load" "store"]
+                     width ["u16" "u64"]
+                     maximum mir/kernel-window-maxima]
+                 [(keyword (str "kernel-" kind "-" width)) maximum])
+        slice (for [kind ["load" "store"]
+                    width ["u8" "u16" "u32" "u64"]]
+                [(keyword (str "slice-" kind "-" width)) mir/slice-item-limit])
+        ;; Tiers the table admitted for one member of a family and not another.
+        previously-refused [[:kernel-store-u8 16384] [:kernel-store-u8 65536]
+                            [:kernel-load-u32 4096] [:kernel-store-u32 65536]]
+        operations (concat window slice previously-refused)]
+    (is (= 28 (count operations))
+        "16 u16/u64 window admissions, 8 slice, 4 previously-refused tiers")
+    (doseq [[target [dst base length index stored]]
+            [[:x86-64 [:x86-64/rax :x86-64/rax :x86-64/rcx
+                       :x86-64/rdx :x86-64/r8]]
+             [:aarch64 [:aarch64/x0 :aarch64/x0 :aarch64/x1
+                        :aarch64/x2 :aarch64/x3]]]
+            [operation maximum] operations]
+      (let [selected (cond-> {:mc/op :mc/instruction
+                              :mc/encoding (keyword (name target) (name operation))
+                              :mir/dst (if (store? operation) stored dst)
+                              :mir/base base :mir/length length
+                              :mir/index index :mir/maximum maximum}
+                       (store? operation) (assoc :mir/stored stored))
+            candidate {:mc/version 2 :mc/target target :mc/frame-slots 0
+                       :mc/instructions
+                       [selected
+                        {:mc/op :mc/instruction
+                         :mc/encoding (keyword (name target) "return")
+                         :mir/value (:mir/dst selected)}]}]
+        (is (= candidate (mc/validate! candidate))
+            (str target " " operation " " maximum))))))
 
 (deftest mc-preserves-x86-privileged-action-selection
   (let [program

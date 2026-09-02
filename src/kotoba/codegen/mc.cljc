@@ -47,6 +47,36 @@
                       :mir/index :mir/maximum}
    :kernel-store-u32 #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
                        :mir/index :mir/stored :mir/maximum}
+   ;; memwidth: the two remaining MMIO transfer widths, and the ADR 0285 slice
+   ;; family. Every one carries exactly the fields its u8/u32 sibling does --
+   ;; the transfer width is in the encoding name, and for the slice family the
+   ;; only other difference is that `:mir/index` counts elements, which the
+   ;; backend folds into the addressing mode rather than into a field.
+   :kernel-load-u16 #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
+                      :mir/index :mir/maximum}
+   :kernel-store-u16 #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
+                       :mir/index :mir/stored :mir/maximum}
+   :kernel-load-u64 #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
+                      :mir/index :mir/maximum}
+   :kernel-store-u64 #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
+                       :mir/index :mir/stored :mir/maximum}
+   :slice-load-u8 #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
+                    :mir/index :mir/maximum}
+   :slice-store-u8 #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
+                     :mir/index :mir/stored :mir/maximum}
+   :slice-load-u16 #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
+                     :mir/index :mir/maximum}
+   :slice-store-u16 #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
+                      :mir/index :mir/stored :mir/maximum}
+   :slice-load-u32 #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
+                     :mir/index :mir/maximum}
+   :slice-store-u32 #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
+                      :mir/index :mir/stored :mir/maximum}
+   :slice-load-u64 #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
+                     :mir/index :mir/maximum}
+   :slice-store-u64 #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
+                      :mir/index :mir/stored :mir/maximum}
+   ;; memwidth: end
    ;; The lock pair carries the load's fields. No `:mir/stored`: what gets
    ;; written is fixed by the operation -- 1 to acquire, 0 to release -- which
    ;; is the difference between a lock and a compare-exchange.
