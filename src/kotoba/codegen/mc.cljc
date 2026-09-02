@@ -157,6 +157,19 @@
    :kernel-dot-f32 #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
                      :mir/second-base :mir/second-length :mir/count
                      :mir/maximum}
+   ;; dequant: the fused dequantize-and-dot family. The same keyset -- two
+   ;; regions, a ceiling and a count -- because the operand SHAPE is the
+   ;; same; `:mir/count` counts blocks rather than elements, and which it
+   ;; counts is the format's business. x86-64 only, for the reason above.
+   :kernel-dequant-dot-q8-0 #{:mc/op :mc/encoding :mir/dst :mir/base
+                              :mir/length :mir/second-base :mir/second-length
+                              :mir/count :mir/maximum}
+   :kernel-dequant-dot-q4-k #{:mc/op :mc/encoding :mir/dst :mir/base
+                              :mir/length :mir/second-base :mir/second-length
+                              :mir/count :mir/maximum}
+   :kernel-dequant-dot-q6-k #{:mc/op :mc/encoding :mir/dst :mir/base
+                              :mir/length :mir/second-base :mir/second-length
+                              :mir/count :mir/maximum}
    :kernel-subregion #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
                        :mir/offset :mir/size}
    :equal #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
