@@ -505,3 +505,57 @@
     (is (thrown? clojure.lang.ExceptionInfo
                  (mc/validate!
                   (assoc-in program [:mc/instructions 1 :mir/capability] 256))))))
+
+;; ---------------------------------------------------------------------------
+;; sysops: the general atomic read-modify-write family (kotoba-gmir ADR 0007).
+;; ---------------------------------------------------------------------------
+
+(deftest selected-general-atomic-family-is-admitted
+  (doseq [[target [dst base length index expected stored]]
+          ;; x86-64 uses the call-argument tier here for the same reason
+          ;; `kotoba.mir` does: the compare-exchange needs five live operands
+          ;; and RAX is spoken for by `lock cmpxchg`.
+          [[:x86-64 [:x86-64/rdi :x86-64/rdi :x86-64/rsi
+                     :x86-64/rdx :x86-64/rcx :x86-64/r8]]
+           [:aarch64 [:aarch64/x0 :aarch64/x0 :aarch64/x1
+                      :aarch64/x2 :aarch64/x3 :aarch64/x4]]]
+          operation [:kernel-atomic-add-u32 :kernel-atomic-add-u64
+                     :kernel-xchg-u32 :kernel-xchg-u64
+                     :kernel-cmpxchg-u32 :kernel-cmpxchg-u64]]
+    (testing (str target " " operation)
+      (let [selected (cond-> {:mc/op :mc/instruction
+                              :mc/encoding (keyword (name target)
+                                                    (name operation))
+                              :mir/dst dst :mir/base base :mir/length length
+                              :mir/index index :mir/stored stored
+                              :mir/maximum 4096}
+                       (contains? #{:kernel-cmpxchg-u32 :kernel-cmpxchg-u64}
+                                  operation)
+                       (assoc :mir/expected expected))
+            candidate {:mc/version 2 :mc/target target :mc/frame-slots 0
+                       :mc/instructions
+                       [selected
+                        {:mc/op :mc/instruction
+                         :mc/encoding (keyword (name target) "return")
+                         :mir/value dst}]}]
+        (is (= candidate (mc/validate! candidate)))
+        (testing "the keyset is exact -- a stray field is rejected"
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"non-canonical-selected-instruction"
+               (mc/validate!
+                (assoc-in candidate [:mc/instructions 0 :mir/offset] index)))))
+        (testing "the comparand field belongs to the compare-exchanges alone"
+          (if (contains? #{:kernel-cmpxchg-u32 :kernel-cmpxchg-u64} operation)
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"non-canonical-selected-instruction"
+                 (mc/validate!
+                  (update-in candidate [:mc/instructions 0]
+                             dissoc :mir/expected))))
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"non-canonical-selected-instruction"
+                 (mc/validate!
+                  (assoc-in candidate [:mc/instructions 0 :mir/expected]
+                            expected))))))))))
