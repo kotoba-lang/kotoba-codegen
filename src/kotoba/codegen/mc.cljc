@@ -39,6 +39,32 @@
    :f64-greater-than #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
    :f64-greater-or-equal #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
    :f64-unordered #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   ;; f32: binary32 (kotoba-lang ADR-kotoba-floating-point-on-native). The same
+   ;; operand shapes as the f64 family above -- an f32 is one machine word
+   ;; holding its binary32 pattern sign-extended from bit 31, so nothing here
+   ;; needs a new field.
+   ;;
+   ;; No f32-min/f32-max: x86 MINSS/MAXSS return the SECOND operand when either
+   ;; input is NaN while AArch64 FMIN and the KIR oracle return the NaN, so the
+   ;; f64 pair above already means two things on the two targets. Recorded
+   ;; upstream; not inherited here.
+   :f32-add #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   :f32-subtract #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   :f32-multiply #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   :f32-divide #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   :f32-sqrt #{:mc/op :mc/encoding :mir/dst :mir/input}
+   :f32-equal #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   :f32-less-than #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   :f32-less-or-equal #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   :f32-greater-than #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   :f32-greater-or-equal #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   :f32-unordered #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   ;; Width conversions -- one source in, one value out, like f32-sqrt. Only
+   ;; the four on which both ISAs and the oracle agree for every input.
+   :f32-to-f64 #{:mc/op :mc/encoding :mir/dst :mir/input}
+   :f64-to-f32 #{:mc/op :mc/encoding :mir/dst :mir/input}
+   :i64-to-f32 #{:mc/op :mc/encoding :mir/dst :mir/input}
+   :i64-to-f64 #{:mc/op :mc/encoding :mir/dst :mir/input}
    :kernel-load-u8 #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
                      :mir/index :mir/maximum}
    :kernel-store-u8 #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
