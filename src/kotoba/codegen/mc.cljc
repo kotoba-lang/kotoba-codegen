@@ -13,6 +13,14 @@
   {:argument #{:mc/op :mc/encoding :mir/dst :mir/index}
    :constant #{:mc/op :mc/encoding :mir/dst :mir/value}
    :data-address #{:mc/op :mc/encoding :mir/dst :mir/content}
+   ;; boot-lit: the address of a read-only literal placed in the code image
+   ;; (kotoba-gmir ADR-0011). It carries an ENCODING beside its content, which
+   ;; is the whole difference from `:data-address` above: that one is always
+   ;; UTF-8 and the backend resolves it against a runtime base, and this one is
+   ;; UCS-2, a GUID or raw bytes and the backend resolves it against the
+   ;; program counter.
+   :rodata-address #{:mc/op :mc/encoding :mir/dst :mir/content
+                     :mir/rodata-encoding}
    :add #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
    :subtract #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
    :multiply #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}

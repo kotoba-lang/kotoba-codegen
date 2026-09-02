@@ -653,3 +653,31 @@
              (mc/validate!
               (assoc-in candidate [:mc/instructions 0 field] :aarch64/x0)))
             (str field " must be an x86-64 register"))))))
+
+;; boot-lit ───────────────────────────────────────────────────────────────────
+
+(deftest boot-lit-a-rodata-address-carries-its-encoding
+  ;; kotoba-gmir ADR-0011. The encoding is what distinguishes this shape from
+  ;; `:data-address`: the same string is a different sixteen bytes as a GUID
+  ;; than it is as hex, so an instruction that lost the key would place the
+  ;; wrong bytes and still validate.
+  (let [literal (assoc program :mc/instructions
+                       [{:mc/op :mc/instruction
+                         :mc/encoding :x86-64/rodata-address
+                         :mir/dst :x86-64/rax :mir/content "AIUEOS"
+                         :mir/rodata-encoding :utf-16le-nul}
+                        {:mc/op :mc/instruction :mc/encoding :x86-64/return
+                         :mir/value :x86-64/rax}])]
+    (is (= literal (mc/validate! literal)))
+    (testing "dropping the encoding is not canonical"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"non-canonical-selected-instruction"
+           (mc/validate!
+            (update-in literal [:mc/instructions 0] dissoc
+                       :mir/rodata-encoding)))))
+    (testing "and neither is a data-address that grew one"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"non-canonical-selected-instruction"
+           (mc/validate!
+            (assoc-in literal [:mc/instructions 0 :mc/encoding]
+                      :x86-64/data-address)))))))
