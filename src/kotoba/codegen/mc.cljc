@@ -178,6 +178,19 @@
    :kernel-dequant-dot-q6-k #{:mc/op :mc/encoding :mir/dst :mir/base
                               :mir/length :mir/second-base :mir/second-length
                               :mir/count :mir/maximum}
+   ;; dequant-iq: the four codebook formats, same keyset again.
+   :kernel-dequant-dot-iq4-xs #{:mc/op :mc/encoding :mir/dst :mir/base
+                              :mir/length :mir/second-base :mir/second-length
+                              :mir/count :mir/maximum}
+   :kernel-dequant-dot-iq2-s #{:mc/op :mc/encoding :mir/dst :mir/base
+                             :mir/length :mir/second-base :mir/second-length
+                             :mir/count :mir/maximum}
+   :kernel-dequant-dot-iq3-xxs #{:mc/op :mc/encoding :mir/dst :mir/base
+                               :mir/length :mir/second-base :mir/second-length
+                               :mir/count :mir/maximum}
+   :kernel-dequant-dot-iq3-s #{:mc/op :mc/encoding :mir/dst :mir/base
+                             :mir/length :mir/second-base :mir/second-length
+                             :mir/count :mir/maximum}
    :kernel-subregion #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
                        :mir/offset :mir/size}
    :equal #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
