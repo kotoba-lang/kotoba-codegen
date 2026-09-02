@@ -20,6 +20,15 @@
    :x86-64/call-rel32 5
    :x86-64/jmp-rel8 2
    :x86-64/jne-rel8 2
+   ;; boot-scratch: `lea r64,[rip+disp32]` -- REX.W, 0x8d, a mod-00 rm-101
+   ;; ModRM and four displacement bytes. It is not a branch, and it is here
+   ;; anyway: what this table owns is "an instruction of fixed width whose
+   ;; displacement is a label position the first pass has not computed yet",
+   ;; which is exactly what taking the address of a function is. The
+   ;; alternative -- a private token resolved in the backend's own second pass
+   ;; -- is what the literal pool does, and that one has no label to resolve
+   ;; against. See kotoba-codegen ADR-0011.
+   :x86-64/lea-rip-label 7
    :aarch64/cbz-x0-imm19 4
    :aarch64/cbz-x1-imm19 4
    :aarch64/cbz-imm19 4
@@ -47,6 +56,7 @@
    :x86-64/call-rel32 [(- 0x80000000) 0x7fffffff]
    :x86-64/jmp-rel8 [-128 127]
    :x86-64/jne-rel8 [-128 127]
+   :x86-64/lea-rip-label [(- 0x80000000) 0x7fffffff]
    :aarch64/cbz-x0-imm19 [(- 0x100000) 0xffffc]
    :aarch64/cbz-x1-imm19 [(- 0x100000) 0xffffc]
    :aarch64/cbz-imm19 [(- 0x100000) 0xffffc]
@@ -76,6 +86,9 @@
    :x86-64/call-rel32 5
    :x86-64/jmp-rel8 2
    :x86-64/jne-rel8 2
+   ;; Measured from the END of the instruction, like every x86 displacement
+   ;; here, hence seven and not three.
+   :x86-64/lea-rip-label 7
    :aarch64/cbz-x0-imm19 0
    :aarch64/cbz-x1-imm19 0
    :aarch64/cbz-imm19 0
@@ -103,6 +116,7 @@
    :x86-64/call-rel32 1
    :x86-64/jmp-rel8 1
    :x86-64/jne-rel8 1
+   :x86-64/lea-rip-label 1
    :aarch64/cbz-x0-imm19 4
    :aarch64/cbz-x1-imm19 4
    :aarch64/cbz-imm19 4
@@ -194,6 +208,16 @@
         (let [[reg :as operands] (:mir/operands token)]
           (when-not (and (= 1 (count operands)) (integer? reg) (<= 0 reg 31))
             (throw (ex-info "AArch64 CBZ/CBNZ requires [register] operands"
+                            {:phase :layout :token token}))))
+
+        ;; boot-scratch: the destination register CODE, not a register
+        ;; keyword. This namespace names no target registers -- the branch
+        ;; operands above are codes for the same reason -- and the backend
+        ;; that emits the REX and ModRM bytes is the one holding the map.
+        :x86-64/lea-rip-label
+        (let [[reg :as operands] (:mir/operands token)]
+          (when-not (and (= 1 (count operands)) (integer? reg) (<= 0 reg 15))
+            (throw (ex-info "x86-64 LEA RIP-relative requires [register] operands"
                             {:phase :layout :token token}))))
 
         (when (contains? token :mir/operands)

@@ -681,3 +681,34 @@
            (mc/validate!
             (assoc-in literal [:mc/instructions 0 :mc/encoding]
                       :x86-64/data-address)))))))
+
+;; boot-scratch ───────────────────────────────────────────────────────────────
+
+(deftest boot-scratch-a-function-address-carries-a-name-and-nothing-else
+  ;; kotoba-gmir ADR-0013. The key is `:mir/function`, the same shape a call
+  ;; carries as `:mir/callee`, because what this resolves against is a label
+  ;; the module already has -- not a pool entry, which is what makes it
+  ;; neither `:data-address` nor `:rodata-address`.
+  (let [address (assoc program :mc/instructions
+                       [{:mc/op :mc/instruction
+                         :mc/encoding :x86-64/function-address
+                         :mir/dst :x86-64/rax :mir/function 'helper}
+                        {:mc/op :mc/instruction :mc/encoding :x86-64/return
+                         :mir/value :x86-64/rax}])]
+    (is (= address (mc/validate! address)))
+    (testing "dropping the name is not canonical"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"non-canonical-selected-instruction"
+           (mc/validate!
+            (update-in address [:mc/instructions 0] dissoc :mir/function)))))
+    (testing "and neither is one that also carries a literal's content"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"non-canonical-selected-instruction"
+           (mc/validate!
+            (assoc-in address [:mc/instructions 0 :mir/content] "AIUEOS")))))
+    (testing "and neither is a rodata-address that grew a name"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo #"non-canonical-selected-instruction"
+           (mc/validate!
+            (assoc-in address [:mc/instructions 0 :mc/encoding]
+                      :x86-64/rodata-address)))))))
