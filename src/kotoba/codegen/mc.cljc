@@ -54,6 +54,31 @@
                           :mir/index :mir/maximum}
    :kernel-unlock-u32 #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
                         :mir/index :mir/maximum}
+   ;; sysops: the general atomic family (kotoba-gmir ADR 0007). Where the lock
+   ;; pair above fixes both comparand and replacement, these take the word
+   ;; from the guest -- which is what a device descriptor ring needs, and what
+   ;; makes them read-modify-writes rather than a mutex.
+   ;;
+   ;; They carry the store's fields; `:mir/stored` is the addend for the two
+   ;; adds and the replacement for the swaps and compare-exchanges. Only the
+   ;; compare-exchanges carry `:mir/expected`, and they carry it because a
+   ;; guest-supplied comparand is the entire difference between them and the
+   ;; lock. `:mir/dst` is the word memory held BEFORE the operation, for all
+   ;; six: a compare-exchange that returned only a success flag would force a
+   ;; re-read on failure, which is the race it exists to close.
+   :kernel-atomic-add-u32 #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
+                            :mir/index :mir/stored :mir/maximum}
+   :kernel-atomic-add-u64 #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
+                            :mir/index :mir/stored :mir/maximum}
+   :kernel-xchg-u32 #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
+                      :mir/index :mir/stored :mir/maximum}
+   :kernel-xchg-u64 #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
+                      :mir/index :mir/stored :mir/maximum}
+   :kernel-cmpxchg-u32 #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
+                         :mir/index :mir/expected :mir/stored :mir/maximum}
+   :kernel-cmpxchg-u64 #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
+                         :mir/index :mir/expected :mir/stored :mir/maximum}
+   ;; sysops: end
    :kernel-subregion #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
                        :mir/offset :mir/size}
    :equal #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
