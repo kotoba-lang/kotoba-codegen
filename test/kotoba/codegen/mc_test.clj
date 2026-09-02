@@ -601,3 +601,55 @@
                  (mc/validate!
                   (assoc-in candidate [:mc/instructions 0 :mir/expected]
                             expected))))))))))
+
+;; simd: the f32 dot product (kotoba-gmir ADR 0010, kotoba-mir ADR 0015).
+
+(deftest selected-f32-dot-product-is-admitted
+  ;; x86-64 only, and the operands arrive in the call-argument tier for the
+  ;; reason the compare-exchanges' do: five values are live at once against a
+  ;; four-register scratch tier.
+  (let [selected {:mc/op :mc/instruction
+                  :mc/encoding :x86-64/kernel-dot-f32
+                  :mir/dst :x86-64/rdi
+                  :mir/base :x86-64/rdi :mir/length :x86-64/rsi
+                  :mir/second-base :x86-64/rdx :mir/second-length :x86-64/rcx
+                  :mir/count :x86-64/r8
+                  :mir/maximum 65536}
+        candidate {:mc/version 2 :mc/target :x86-64 :mc/frame-slots 0
+                   :mc/instructions
+                   [selected
+                    {:mc/op :mc/instruction :mc/encoding :x86-64/return
+                     :mir/value :x86-64/rdi}]}]
+    (is (= candidate (mc/validate! candidate)))
+    (testing "the keyset is exact -- a stray field is rejected"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"non-canonical-selected-instruction"
+           (mc/validate!
+            (assoc-in candidate [:mc/instructions 0 :mir/index] :x86-64/r8)))))
+    (testing "and neither region's pair may be dropped"
+      ;; The second base is the field that would go missing quietly: an
+      ;; encoder handed a four-operand instruction would read whatever
+      ;; register happened to be there.
+      (doseq [field [:mir/second-base :mir/second-length :mir/count
+                     :mir/base :mir/length :mir/maximum]]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"non-canonical-selected-instruction"
+             (mc/validate!
+              (update-in candidate [:mc/instructions 0] dissoc field)))
+            (str field " is mandatory"))))
+    (testing "every operand must be a physical register of the target"
+      ;; The rejection arrives from MIR rather than from MC's own keyset
+      ;; check: `mc/validate!` re-validates the underlying MIR program, and a
+      ;; foreign register fails the register profile there first. Either
+      ;; layer refusing is the answer this asserts -- what must not happen is
+      ;; an AArch64 register reaching an x86 encoder.
+      (doseq [field [:mir/dst :mir/base :mir/length :mir/second-base
+                     :mir/second-length :mir/count]]
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"rejected"
+             (mc/validate!
+              (assoc-in candidate [:mc/instructions 0 field] :aarch64/x0)))
+            (str field " must be an x86-64 register"))))))

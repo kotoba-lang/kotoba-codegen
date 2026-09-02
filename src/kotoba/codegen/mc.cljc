@@ -135,6 +135,20 @@
    :kernel-cmpxchg-u64 #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
                          :mir/index :mir/expected :mir/stored :mir/maximum}
    ;; sysops: end
+   ;; simd: the f32 dot product (kotoba-gmir ADR 0010, kotoba-mir ADR 0015).
+   ;; TWO regions, so two bases and two lengths, and `:mir/count` in place of
+   ;; the `:mir/index` every other member of this family carries -- it names
+   ;; how many elements to fold rather than which one to touch. `:mir/base`
+   ;; and `:mir/length` stay the FIRST region's names, so anything reading
+   ;; `:mir/base` for a base still finds one.
+   ;;
+   ;; `:mir/maximum` bounds BOTH lengths, in bytes, while `:mir/count` counts
+   ;; elements. x86-64 only: `kotoba.mir` refuses the operation for every
+   ;; other target, because the sequence it selects is AVX2 and legacy SSE and
+   ;; an AArch64 answer would reduce its lanes in a different order.
+   :kernel-dot-f32 #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
+                     :mir/second-base :mir/second-length :mir/count
+                     :mir/maximum}
    :kernel-subregion #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
                        :mir/offset :mir/size}
    :equal #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
