@@ -1,5 +1,5 @@
 (ns kotoba.codegen.mc-test
-  (:require [clojure.string]
+  (:require [kotoba.lang.text]
             [clojure.test :refer [deftest is testing]]
             [kotoba.codegen.mc :as mc]
             [kotoba.mir :as mir]))
@@ -272,7 +272,7 @@
   ;; operation absent from it is rejected as `:non-canonical-instruction` even
   ;; though its shape is identical -- which is why these twelve entries have to
   ;; be written down rather than derived from a width.
-  (let [store? #(clojure.string/includes? (name %) "store")
+  (let [store? #(kotoba.lang.text/includes? (name %) "store")
         window (for [kind ["load" "store"]
                      width ["u16" "u64"]
                      maximum mir/kernel-window-maxima]

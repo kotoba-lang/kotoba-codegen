@@ -3,7 +3,7 @@
 
   Code generators own when a relocation is required. Object encoders own its
   container bits. This namespace fixes the data exchanged at that boundary."
-  (:require [clojure.string :as str]))
+  (:require [kotoba.lang.text :as str]))
 
 (def version 1)
 
