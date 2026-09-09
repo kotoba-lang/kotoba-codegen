@@ -29,6 +29,10 @@
    ;; -- is what the literal pool does, and that one has no label to resolve
    ;; against. See kotoba-codegen ADR-0011.
    :x86-64/lea-rip-label 7
+   ;; boot-scratch/adr: AArch64's answer to the line above, and it is ONE
+   ;; instruction. `adr Xd, label` carries a 21-bit BYTE displacement, so it
+   ;; needs neither ADRP's page split nor a second `add`.
+   :aarch64/adr-label 4
    :aarch64/cbz-x0-imm19 4
    :aarch64/cbz-x1-imm19 4
    :aarch64/cbz-imm19 4
@@ -57,6 +61,11 @@
    :x86-64/jmp-rel8 [-128 127]
    :x86-64/jne-rel8 [-128 127]
    :x86-64/lea-rip-label [(- 0x80000000) 0x7fffffff]
+   ;; boot-scratch/adr: +/-1 MiB, and the maximum is 0xfffff rather than the
+   ;; branches' 0xffffc because ADR's displacement is in BYTES. Copying a
+   ;; branch's row here would silently forbid the last three reachable
+   ;; addresses.
+   :aarch64/adr-label [(- 0x100000) 0xfffff]
    :aarch64/cbz-x0-imm19 [(- 0x100000) 0xffffc]
    :aarch64/cbz-x1-imm19 [(- 0x100000) 0xffffc]
    :aarch64/cbz-imm19 [(- 0x100000) 0xffffc]
@@ -89,6 +98,11 @@
    ;; Measured from the END of the instruction, like every x86 displacement
    ;; here, hence seven and not three.
    :x86-64/lea-rip-label 7
+   ;; boot-scratch/adr: ZERO, not four. ADR measures from the address of the
+   ;; instruction itself, where every x86 displacement here measures from the
+   ;; end of it. This is the single most likely thing to be carried over
+   ;; wrongly from the row above.
+   :aarch64/adr-label 0
    :aarch64/cbz-x0-imm19 0
    :aarch64/cbz-x1-imm19 0
    :aarch64/cbz-imm19 0
