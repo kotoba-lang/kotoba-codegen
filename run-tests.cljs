@@ -16,6 +16,7 @@
 ;; `(t/run-tests ...)` form.
 (ns run-tests
   (:require [cljs.test :as t]
+            [kotoba.codegen.layout-test]
             [kotoba.codegen.relocation-test]))
 
 (defmethod t/report [:cljs.test/default :end-run-tests] [m]
@@ -24,4 +25,5 @@
   (when (pos? (+ (or (:fail m) 0) (or (:error m) 0)))
     (set! (.-exitCode js/process) 1)))
 
-(t/run-tests 'kotoba.codegen.relocation-test)
+(t/run-tests 'kotoba.codegen.layout-test
+             'kotoba.codegen.relocation-test)
