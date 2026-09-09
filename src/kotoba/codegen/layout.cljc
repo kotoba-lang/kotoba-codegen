@@ -131,6 +131,12 @@
    :x86-64/jmp-rel8 1
    :x86-64/jne-rel8 1
    :x86-64/lea-rip-label 1
+   ;; boot-scratch/adr: ONE, where every AArch64 branch below is four. ADR's
+   ;; displacement is in bytes, so an unaligned target is legal and the low
+   ;; two bits have a field of their own (`immlo`, bits 30-29). Copying the
+   ;; four from a branch row would refuse three quarters of the addresses
+   ;; this instruction can reach.
+   :aarch64/adr-label 1
    :aarch64/cbz-x0-imm19 4
    :aarch64/cbz-x1-imm19 4
    :aarch64/cbz-imm19 4
@@ -232,6 +238,17 @@
         (let [[reg :as operands] (:mir/operands token)]
           (when-not (and (= 1 (count operands)) (integer? reg) (<= 0 reg 15))
             (throw (ex-info "x86-64 LEA RIP-relative requires [register] operands"
+                            {:phase :layout :token token}))))
+
+        ;; boot-scratch/adr: a code for the same reason, and the range is
+        ;; 0-30 rather than 0-15 -- AArch64 has thirty-one general registers
+        ;; and Rd is five bits. 31 is excluded because in this position it
+        ;; encodes XZR, and an ADR whose destination is the zero register
+        ;; computes an address and discards it.
+        :aarch64/adr-label
+        (let [[reg :as operands] (:mir/operands token)]
+          (when-not (and (= 1 (count operands)) (integer? reg) (<= 0 reg 30))
+            (throw (ex-info "AArch64 ADR requires [register] operands"
                             {:phase :layout :token token}))))
 
         (when (contains? token :mir/operands)
