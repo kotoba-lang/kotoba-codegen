@@ -13,6 +13,33 @@
    :x86-64 #{:x86-64/unsigned :x86-64/signed :x86-64/branch
              :x86-64/got-load :x86-64/got :x86-64/tlv}})
 
+(defn- printable-ascii?
+  "Is CH a printable ASCII character? CH is a JVM Character or, on
+  ClojureScript, a one-character string -- `seq` over a string yields
+  different things on the two hosts.
+
+  This was `#(<= 0x20 (int %) 0x7e)`, which is correct on the JVM and SILENTLY
+  WRONG on ClojureScript. `(first \"_callee\")` is the STRING \"_\" there, and
+  `(int \"_\")` returns 0 -- not an error, not a character code, just 0. So the
+  range test failed for every symbol, `validate!` answered
+  `:non-canonical-request` for every relocation, and NO Mach-O object could be
+  emitted on the JVM-free runtime at all. Measured 2026-09-08 through
+  kotoba-native's `shared-relocations-reach-real-macho-records` the first time
+  it ran under nbb:
+
+    request  {:reloc/target :aarch64 :reloc/type :aarch64/branch26
+              :reloc/symbol \"_callee\" ...}
+    JVM      accepted
+    nbb      relocation rejected: non-canonical-request
+
+  `(int <one-character string>)` returning 0 rather than throwing is what made
+  it silent, and it is the exact shape
+  `scripts/verify-cljc-runtime-parity.cljs` flags as `risky-mapv-int-over-string`
+  in the superproject."
+  [ch]
+  (let [code #?(:clj (int ch) :cljs (.charCodeAt ch 0))]
+    (and (<= 0x20 code) (<= code 0x7e))))
+
 (defn- reject! [problem request]
   (throw (ex-info (str "relocation rejected: " (name problem))
                   {:phase :relocation :problem problem :request request})))
@@ -31,7 +58,7 @@
                  (contains? (get macho-types target) type)
                  (string? symbol) (str/starts-with? symbol "_")
                  (<= 2 (count symbol) 255)
-                 (every? #(<= 0x20 (int %) 0x7e) symbol))
+                 (every? printable-ascii? symbol))
     (reject! :non-canonical-request request))
   request)
 
