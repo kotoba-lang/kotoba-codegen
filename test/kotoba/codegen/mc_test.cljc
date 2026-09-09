@@ -1,6 +1,17 @@
 (ns kotoba.codegen.mc-test
+  "`kotoba.codegen.mc` is `.cljc` and every test of it was `.clj`, so its
+  ClojureScript half had never run -- the same gap the layout pass had until
+  2026-09-09.
+
+  Unlike `layout`, this namespace is a data-shape contract rather than
+  arithmetic: it owns which keys an allocated machine-code instruction may
+  carry, and holds two bit operations in 335 lines. So the expected finding
+  here is parity rather than a defect, and parity that nobody has executed is
+  still an assumption. Converted unchanged except for the host-conditional
+  test require and the exception type."
   (:require [kotoba.lang.text]
-            [clojure.test :refer [deftest is testing]]
+            #?(:clj  [clojure.test :refer [deftest is testing]]
+               :cljs [cljs.test :refer [deftest is testing] :include-macros true])
             [kotoba.codegen.mc :as mc]
             [kotoba.mir :as mir]))
 
@@ -82,7 +93,7 @@
                       {:mc/op :mc/instruction :mc/encoding :aarch64/return
                        :mir/value :aarch64/x0}]}]
       (is (= candidate (mc/validate! candidate)) operation)
-      (is (thrown? clojure.lang.ExceptionInfo
+      (is (thrown? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
                    (mc/validate! (update-in candidate [:mc/instructions 0]
                                             dissoc :mir/addend))) operation))))
 
@@ -100,11 +111,11 @@
                       {:mc/op :mc/instruction :mc/encoding :aarch64/return
                        :mir/value :aarch64/x2}]}]}]
     (is (= candidate (mc/validate! candidate)))
-    (is (thrown? clojure.lang.ExceptionInfo
+    (is (thrown? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
                  (mc/validate! (update-in candidate
                                           [:mc/functions 0 :mc/instructions 0]
                                           dissoc :mir/divisor))))
-    (is (thrown? clojure.lang.ExceptionInfo
+    (is (thrown? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
                  (mc/validate! (assoc-in candidate
                                          [:mc/functions 0 :mc/instructions 0
                                           :mir/right]
@@ -130,7 +141,7 @@
     (doseq [invalid [(assoc branch :extra true)
                      (dissoc branch :mc/test)
                      (assoc branch :mc/target :test.label/missing)]]
-      (is (thrown? clojure.lang.ExceptionInfo
+      (is (thrown? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
                    (mc/validate!
                     (assoc-in candidate [:mc/functions 0 :mc/instructions 1]
                               invalid)))))
@@ -152,9 +163,9 @@
       (is (= :target-selected-operation-target-mismatch
              (try (mc/validate! x86-candidate)
                   nil
-                  (catch clojure.lang.ExceptionInfo error
+                  (catch #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo) error
                     (:problem (ex-data error)))))))
-    (is (thrown? clojure.lang.ExceptionInfo
+    (is (thrown? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
                  (mc/validate!
                   {:mc/version 2 :mc/target :aarch64 :mc/frame-slots 0
                    :mc/instructions
@@ -203,7 +214,7 @@
                                  :mc/encoding :aarch64/constant
                                  :mir/dst :aarch64/x2 :mir/value 1})
                      (assoc candidate :mc/target :x86-64)]]
-      (is (thrown? clojure.lang.ExceptionInfo (mc/validate! invalid))))))
+      (is (thrown? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo) (mc/validate! invalid))))))
 
 (deftest selected-f64-family-is-admitted
   (doseq [target [:x86-64 :aarch64]
@@ -324,7 +335,7 @@
             {:mc/op :mc/instruction :mc/encoding :x86-64/return
              :mir/value :x86-64/rdx}]}]}]
     (is (= program (mc/validate! program)))
-    (is (thrown? clojure.lang.ExceptionInfo
+    (is (thrown? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
                  (mc/validate! (assoc-in program
                                          [:mc/functions 0 :mc/instructions 2
                                           :mir/action]
@@ -332,38 +343,38 @@
 
 (deftest contract-fails-closed
   (testing "target and selected encoding must agree"
-    (is (thrown? clojure.lang.ExceptionInfo
+    (is (thrown? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
                  (mc/validate! (assoc-in program [:mc/instructions 0 :mc/encoding]
                                          :aarch64/argument)))))
   (testing "selected keysets are exact"
-    (is (thrown? clojure.lang.ExceptionInfo
+    (is (thrown? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
                  (mc/validate! (assoc-in program [:mc/instructions 0 :ambient/policy]
                                          true)))))
   (testing "move is canonical and target-specific"
-    (is (thrown? clojure.lang.ExceptionInfo
+    (is (thrown? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
                  (mc/validate!
                   (assoc program :mc/instructions
                          [{:mc/op :mc/instruction :mc/encoding :x86-64/move
                            :mir/dst :x86-64/rax :mir/src :x86-64/rcx
                            :ambient/copy true}])))))
   (testing "physical register profile comes from MIR"
-    (is (thrown? clojure.lang.ExceptionInfo
+    (is (thrown? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
                  (mc/validate! (assoc-in program [:mc/instructions 0 :mir/dst]
                                          :aarch64/x0)))))
   (testing "control flow remains a closed graph"
-    (is (thrown? clojure.lang.ExceptionInfo
+    (is (thrown? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
                  (mc/validate! (assoc-in program [:mc/instructions 3 :mc/target]
                                          :test.label/missing)))))
   (testing "unknown operations never reach a backend"
-    (is (thrown? clojure.lang.ExceptionInfo
+    (is (thrown? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
                  (mc/validate! (assoc-in program [:mc/instructions 0 :mc/op]
                                          :mc/invented)))))
   (testing "spill slots stay inside the declared frame"
-    (is (thrown? clojure.lang.ExceptionInfo
+    (is (thrown? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
                  (mc/validate! (assoc-in spilled-program
                                          [:mc/instructions 1 :mir/slot] 1)))))
   (testing "MC v1 cannot silently omit frame ownership"
-    (is (thrown? clojure.lang.ExceptionInfo
+    (is (thrown? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
                  (mc/validate! (-> program
                                    (assoc :mc/version 1)
                                    (dissoc :mc/frame-slots)))))))
@@ -413,28 +424,28 @@
                        (when (= :x86-64/call (:mc/encoding instruction)) index))
                      (get-in call-module [:mc/functions 1 :mc/instructions])))]
     (testing "target encodings and exact call keysets remain closed"
-      (is (thrown? clojure.lang.ExceptionInfo
+      (is (thrown? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
                    (mc/validate!
                     (assoc-in call-module
                               [:mc/functions 1 :mc/instructions call-index :mc/encoding]
                               :aarch64/call))))
-      (is (thrown? clojure.lang.ExceptionInfo
+      (is (thrown? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
                    (mc/validate!
                     (assoc-in call-module
                               [:mc/functions 1 :mc/instructions call-index :ambient/policy]
                               true)))))
     (testing "MIR independently revalidates entry ABI, callee, and frame policy"
-      (is (thrown? clojure.lang.ExceptionInfo
+      (is (thrown? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
                    (mc/validate!
                     (assoc-in call-module
                               [:mc/functions 0 :mc/instructions 0 :mir/dst]
                               :x86-64/rax))))
-      (is (thrown? clojure.lang.ExceptionInfo
+      (is (thrown? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
                    (mc/validate!
                     (assoc-in call-module
                               [:mc/functions 1 :mc/instructions call-index :mir/callee]
                               'missing))))
-      (is (thrown? clojure.lang.ExceptionInfo
+      (is (thrown? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
                    (mc/validate!
                     (assoc-in call-module [:mc/functions 1 :mc/frame-policy]
                               :allocator)))))))
@@ -454,7 +465,7 @@
                   {:mc/op :mc/instruction :mc/encoding :x86-64/tail-call
                    :mir/callee 'add-one :mir/arguments [:x86-64/rdi]}]})]
     (is (= module (mc/validate! module)))
-    (is (thrown? clojure.lang.ExceptionInfo
+    (is (thrown? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
                  (mc/validate!
                   (assoc-in module
                             [:mc/functions 1 :mc/instructions 3 :mir/dst]
@@ -495,7 +506,7 @@
                                         {:mir/dst r0 :mir/left r0 :mir/right r2})
                            (instruction :return {:mir/value r0})]))}]}]
       (is (= module (mc/validate! module)) target)
-      (is (thrown? clojure.lang.ExceptionInfo
+      (is (thrown? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
                    (mc/validate! (assoc-in module
                                            [:mc/functions 0 :mc/frame-slots] 0)))
           target))))
@@ -515,12 +526,12 @@
            :mir/value :x86-64/rax}]}]
     (is (= runtime-program (mc/validate! runtime-program)))
     (testing "the target encoding namespace remains exact"
-      (is (thrown? clojure.lang.ExceptionInfo
+      (is (thrown? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
                    (mc/validate!
                     (assoc-in runtime-program [:mc/instructions 1 :mc/encoding]
                               :aarch64/runtime-call)))))
     (testing "MIR revalidates the selected context-table slot"
-      (is (thrown? clojure.lang.ExceptionInfo
+      (is (thrown? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
                    (mc/validate!
                     (assoc-in runtime-program
                               [:mc/instructions 1 :mir/context-offset]
@@ -541,10 +552,10 @@
                   {:mc/op :mc/instruction :mc/encoding :x86-64/return
                    :mir/value :x86-64/rax}]}]
     (is (= program (mc/validate! program)))
-    (is (thrown? clojure.lang.ExceptionInfo
+    (is (thrown? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
                  (mc/validate!
                   (assoc-in program [:mc/instructions 1 :mir/kind] :i64))))
-    (is (thrown? clojure.lang.ExceptionInfo
+    (is (thrown? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
                  (mc/validate!
                   (assoc-in program [:mc/instructions 1 :mir/capability] 256))))))
 
@@ -583,20 +594,20 @@
         (is (= candidate (mc/validate! candidate)))
         (testing "the keyset is exact -- a stray field is rejected"
           (is (thrown-with-msg?
-               clojure.lang.ExceptionInfo
+               #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
                #"non-canonical-selected-instruction"
                (mc/validate!
                 (assoc-in candidate [:mc/instructions 0 :mir/offset] index)))))
         (testing "the comparand field belongs to the compare-exchanges alone"
           (if (contains? #{:kernel-cmpxchg-u32 :kernel-cmpxchg-u64} operation)
             (is (thrown-with-msg?
-                 clojure.lang.ExceptionInfo
+                 #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
                  #"non-canonical-selected-instruction"
                  (mc/validate!
                   (update-in candidate [:mc/instructions 0]
                              dissoc :mir/expected))))
             (is (thrown-with-msg?
-                 clojure.lang.ExceptionInfo
+                 #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
                  #"non-canonical-selected-instruction"
                  (mc/validate!
                   (assoc-in candidate [:mc/instructions 0 :mir/expected]
@@ -623,7 +634,7 @@
     (is (= candidate (mc/validate! candidate)))
     (testing "the keyset is exact -- a stray field is rejected"
       (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo
+           #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
            #"non-canonical-selected-instruction"
            (mc/validate!
             (assoc-in candidate [:mc/instructions 0 :mir/index] :x86-64/r8)))))
@@ -634,7 +645,7 @@
       (doseq [field [:mir/second-base :mir/second-length :mir/count
                      :mir/base :mir/length :mir/maximum]]
         (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
+             #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
              #"non-canonical-selected-instruction"
              (mc/validate!
               (update-in candidate [:mc/instructions 0] dissoc field)))
@@ -648,7 +659,7 @@
       (doseq [field [:mir/dst :mir/base :mir/length :mir/second-base
                      :mir/second-length :mir/count]]
         (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo
+             #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo)
              #"rejected"
              (mc/validate!
               (assoc-in candidate [:mc/instructions 0 field] :aarch64/x0)))
@@ -671,13 +682,13 @@
     (is (= literal (mc/validate! literal)))
     (testing "dropping the encoding is not canonical"
       (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo #"non-canonical-selected-instruction"
+           #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo) #"non-canonical-selected-instruction"
            (mc/validate!
             (update-in literal [:mc/instructions 0] dissoc
                        :mir/rodata-encoding)))))
     (testing "and neither is a data-address that grew one"
       (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo #"non-canonical-selected-instruction"
+           #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo) #"non-canonical-selected-instruction"
            (mc/validate!
             (assoc-in literal [:mc/instructions 0 :mc/encoding]
                       :x86-64/data-address)))))))
@@ -698,17 +709,17 @@
     (is (= address (mc/validate! address)))
     (testing "dropping the name is not canonical"
       (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo #"non-canonical-selected-instruction"
+           #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo) #"non-canonical-selected-instruction"
            (mc/validate!
             (update-in address [:mc/instructions 0] dissoc :mir/function)))))
     (testing "and neither is one that also carries a literal's content"
       (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo #"non-canonical-selected-instruction"
+           #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo) #"non-canonical-selected-instruction"
            (mc/validate!
             (assoc-in address [:mc/instructions 0 :mir/content] "AIUEOS")))))
     (testing "and neither is a rodata-address that grew a name"
       (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo #"non-canonical-selected-instruction"
+           #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo) #"non-canonical-selected-instruction"
            (mc/validate!
             (assoc-in address [:mc/instructions 0 :mc/encoding]
                       :x86-64/rodata-address)))))))
