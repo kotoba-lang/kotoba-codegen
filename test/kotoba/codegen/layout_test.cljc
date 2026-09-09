@@ -1,9 +1,23 @@
 (ns kotoba.codegen.layout-test
-  (:require [clojure.test :refer [deftest is testing]]
+  "`kotoba.codegen.layout` is `.cljc` and every test of it was `.clj`, so its
+  ClojureScript half had never run. That matters more here than in most
+  places: this namespace lays out machine code, and the two hosts do not agree
+  about integers. A displacement is a Long on the JVM and a double-backed
+  Number on ClojureScript, `unsigned-bit-shift-right` is defined on 32 bits
+  there, and a negative branch displacement is exactly the shape that diverges
+  quietly rather than throwing.
+
+  Converted 2026-09-09, unchanged except for the host-conditional test require
+  and the exception type. `(long n)` in `le32` is dropped rather than
+  conditionalised: it was a JVM widening hint, and the assertions below pin the
+  four little-endian bytes for both positive and negative displacements, which
+  is the property it was there to protect."
+  (:require #?(:clj  [clojure.test :refer [deftest is testing]]
+               :cljs [cljs.test :refer [deftest is testing] :include-macros true])
             [kotoba.codegen.layout :as layout]))
 
 (defn- le32 [n]
-  (mapv #(bit-and (unsigned-bit-shift-right (long n) (* 8 %)) 0xff) (range 4)))
+  (mapv #(bit-and (unsigned-bit-shift-right n (* 8 %)) 0xff) (range 4)))
 
 (defn- size-of [token]
   (or (layout/token-size token)
@@ -60,32 +74,32 @@
 
 (deftest malformed-or-unresolved-layout-fails-closed
   (testing "duplicate labels"
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"duplicate MIR label"
+    (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo) #"duplicate MIR label"
                           (layout/label-offsets [(layout/label :test.label/a)
                                                  (layout/label :test.label/a)]
                                                 size-of))))
   (testing "labels and targets are canonical qualified keywords"
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"qualified keyword"
+    (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo) #"qualified keyword"
                           (layout/label-offsets [(layout/label :local)] size-of)))
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"qualified keyword"
+    (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo) #"qualified keyword"
                           (layout/label-offsets
                            [(layout/relative-branch :x86-64/jmp-rel32 :local)] size-of))))
   (testing "unknown encodings and extra fields are rejected"
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"unsupported"
+    (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo) #"unsupported"
                           (layout/label-offsets
                            [(layout/relative-branch :x86-64/jne-rel32 :test.label/a)] size-of)))
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"non-canonical"
+    (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo) #"non-canonical"
                           (layout/label-offsets
                            [(assoc (layout/label :test.label/a) :extra true)] size-of))))
   (testing "AArch64 TBNZ operands are closed and range checked"
     (is (= 4 (layout/token-size
               (layout/relative-branch :aarch64/tbnz-imm14 :test.label/a [16 63]))))
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"TBNZ requires"
+    (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo) #"TBNZ requires"
                           (layout/label-offsets
                            [(layout/relative-branch :aarch64/tbnz-imm14
                                                     :test.label/a [32 0])]
                            size-of)))
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"does not accept operands"
+    (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo) #"does not accept operands"
                           (layout/label-offsets
                            [(layout/relative-branch :aarch64/b-imm26
                                                     :test.label/a [0])]
@@ -97,7 +111,7 @@
         (is (= 4 (layout/token-size token)))
         (is (= {} (layout/label-offsets [token] size-of)))))
     (doseq [operands [nil [] [0 1] ["0"] [-1] [32]]]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"CBZ/CBNZ requires"
+      (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo) #"CBZ/CBNZ requires"
                             (layout/label-offsets
                              [(layout/relative-branch :aarch64/cbnz-imm19
                                                       :test.label/a operands)]
@@ -110,20 +124,20 @@
       (is (= [0 0 0 0] (resolve-at (- 0x100000))))
       (is (= [0 0 0 0] (resolve-at 0xffffc)))
       (doseq [target [2 0x100000 (- 0x100004)]]
-        (is (thrown? clojure.lang.ExceptionInfo (resolve-at target))))))
+        (is (thrown? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo) (resolve-at target))))))
   (testing "unknown MIR operations never fall through as backend-owned maps"
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"unknown canonical MIR"
+    (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo) #"unknown canonical MIR"
                           (layout/label-offsets [{:mir/op :mir/invented}] (constantly 1)))))
   (testing "all branch targets must exist"
     (let [tokens [(layout/relative-branch :x86-64/jmp-rel32 :test.label/missing)]
           labels (layout/label-offsets tokens size-of)]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"unknown label"
+      (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo) #"unknown label"
                             (layout/resolve-tokens tokens size-of labels encode-branch
                                                    (fn [token _] [token]))))))
   (testing "rel32 overflow is rejected instead of truncated"
     (let [target :test.label/far
           tokens [(layout/relative-branch :x86-64/jmp-rel32 target)]]
-      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"out of range"
+      (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo) #"out of range"
                             (layout/resolve-tokens tokens size-of
                                                    {target 0x80000005}
                                                    encode-branch
@@ -134,7 +148,7 @@
         tokens [(layout/relative-branch :x86-64/jmp-rel32 target)
                 (layout/label target)]
         labels (layout/label-offsets tokens size-of)]
-    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"reserved width"
+    (is (thrown-with-msg? #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo) #"reserved width"
                           (layout/resolve-tokens tokens size-of labels
                                                  (fn [_ _] [0xe9])
                                                  (fn [token _] [token]))))))
@@ -196,12 +210,39 @@
                            :mir/target :test.label/x}
                     operands (assoc :mir/operands operands))]
         (is (thrown-with-msg?
-             clojure.lang.ExceptionInfo #"LEA RIP-relative|relative branch"
+             #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo) #"LEA RIP-relative|relative branch"
              (layout/label-offsets [token] size-of))
             label)))))
 
 (deftest boot-scratch-an-unknown-lea-target-fails-closed
   (is (thrown-with-msg?
-       clojure.lang.ExceptionInfo #"unknown label"
+       #?(:clj clojure.lang.ExceptionInfo :cljs ExceptionInfo) #"unknown label"
        (lea-resolve [(layout/relative-branch :x86-64/lea-rip-label
                                              :test.label/absent [0])]))))
+
+(deftest le32-agrees-with-two-s-complement-in-both-directions
+  ;; Added with the .cljc conversion, and it is what licenses dropping
+  ;; `(long n)` from `le32`.
+  ;;
+  ;; Every displacement the tests above encode is POSITIVE -- 1, 2, 7 -- so the
+  ;; backward branch, which is where the two hosts could disagree, was not
+  ;; covered at all. On the JVM `unsigned-bit-shift-right` widens to 64 bits and
+  ;; the `(long n)` hint mattered; on ClojureScript it is defined on 32, which
+  ;; is exactly the width of a rel32 field. The two arrive at the same four
+  ;; bytes for the whole rel32 range, and that agreement is the property, not
+  ;; either implementation's route to it.
+  (testing "forward"
+    (is (= [0 0 0 0] (le32 0)))
+    (is (= [5 0 0 0] (le32 5)))
+    (is (= [255 255 255 127] (le32 2147483647)) "the largest forward rel32"))
+  (testing "backward -- a jump to a label already emitted"
+    (is (= [255 255 255 255] (le32 -1)))
+    (is (= [254 255 255 255] (le32 -2)))
+    (is (= [238 255 255 255] (le32 -18)))
+    (is (= [0 0 0 128] (le32 -2147483648)) "the largest backward rel32"))
+  (testing "and the boundary between them is one byte apart, not one bit"
+    ;; -1 and 0 differ in all four bytes; a host that sign-extended into a
+    ;; fifth byte, or truncated to two, would answer the same for one of these
+    ;; and not the other.
+    (is (not= (le32 0) (le32 -1)))
+    (is (= 4 (count (le32 -1)) (count (le32 2147483647))))))
