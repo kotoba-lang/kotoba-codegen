@@ -20,6 +20,7 @@
    :x86-64/call-rel32 5
    :x86-64/jmp-rel8 2
    :x86-64/jne-rel8 2
+   :x86-64/jns-rel8 2
    ;; boot-scratch: `lea r64,[rip+disp32]` -- REX.W, 0x8d, a mod-00 rm-101
    ;; ModRM and four displacement bytes. It is not a branch, and it is here
    ;; anyway: what this table owns is "an instruction of fixed width whose
@@ -60,6 +61,7 @@
    :x86-64/call-rel32 [(- 0x80000000) 0x7fffffff]
    :x86-64/jmp-rel8 [-128 127]
    :x86-64/jne-rel8 [-128 127]
+   :x86-64/jns-rel8 [-128 127]
    :x86-64/lea-rip-label [(- 0x80000000) 0x7fffffff]
    ;; boot-scratch/adr: +/-1 MiB, and the maximum is 0xfffff rather than the
    ;; branches' 0xffffc because ADR's displacement is in BYTES. Copying a
@@ -95,6 +97,7 @@
    :x86-64/call-rel32 5
    :x86-64/jmp-rel8 2
    :x86-64/jne-rel8 2
+   :x86-64/jns-rel8 2
    ;; Measured from the END of the instruction, like every x86 displacement
    ;; here, hence seven and not three.
    :x86-64/lea-rip-label 7
@@ -130,6 +133,7 @@
    :x86-64/call-rel32 1
    :x86-64/jmp-rel8 1
    :x86-64/jne-rel8 1
+   :x86-64/jns-rel8 1
    :x86-64/lea-rip-label 1
    ;; boot-scratch/adr: ONE, where every AArch64 branch below is four. ADR's
    ;; displacement is in bytes, so an unaligned target is legal and the low
