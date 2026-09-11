@@ -17,7 +17,7 @@ encoder can silently ignore.
 
 ## Evidence
 
-`clojure -M:test`: 23 tests, 185 assertions, 0 failures.
+`kbb -M:test`: 23 tests, 185 assertions, 0 failures.
 
 Deleting `:mir/expected` from the `:kernel-cmpxchg-u32` keyset made the
 canonical program fail with `MC rejected: non-canonical-selected-instruction`
