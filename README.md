@@ -54,5 +54,5 @@ MC program schema
 ## Development
 
 ```sh
-clojure -M:test
+kbb -M:test
 ```

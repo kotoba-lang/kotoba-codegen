@@ -30,7 +30,7 @@ pointer this layer never checked.
 
 ## Evidence
 
-`clojure -M:test`: 25 tests, 256 assertions, 0 failures (was 23 / 185 before
+`kbb -M:test`: 25 tests, 256 assertions, 0 failures (was 23 / 185 before
 the binary32 encodings and this).
 
 Shortening the keyset to drop `:mir/second-base` and `:mir/second-length` made
