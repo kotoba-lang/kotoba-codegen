@@ -7,7 +7,8 @@
   displacement only after every label position is known.
 
   This is the shared MC/layout boundary. It deliberately owns neither KIR
-  lowering, register allocation, nor target instruction encoders.")
+  lowering, register allocation, nor target instruction encoders."
+  {:kotoba/export [label label-offsets label-token? relative-branch relative-branch-token? resolve-tokens signed-displacement token-size]})
 
 (def ^:private relative-branch-sizes
   {:x86-64/jz-rel32 6

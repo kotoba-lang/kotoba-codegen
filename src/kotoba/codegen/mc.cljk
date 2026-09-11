@@ -5,6 +5,7 @@
   selection and allocation while making the target encoding choice explicit.
   Backends own the bytes for each encoding; this namespace owns the admitted
   data shape."
+  {:kotoba/export [validate! version]}
   (:require [kotoba.mir :as mir]))
 
 (def version 3)
