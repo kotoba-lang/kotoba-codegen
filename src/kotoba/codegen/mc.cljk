@@ -199,6 +199,11 @@
    :greater-than #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
    :less-or-equal #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
    :greater-or-equal #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
+   ;; Stack-passed arguments (kotoba-mir, 2026-09-23): argument i >= 5 of a
+   ;; call, by index; the encoder turns the index into an offset.
+   :incoming-load #{:mc/op :mc/encoding :mir/dst :mir/index}
+   :outgoing-argument #{:mc/op :mc/encoding :mir/src :mir/index}
+   :incoming-argument-store #{:mc/op :mc/encoding :mir/src :mir/index}
    :spill-load #{:mc/op :mc/encoding :mir/dst :mir/slot}
    :spill-store #{:mc/op :mc/encoding :mir/src :mir/slot}
    :move #{:mc/op :mc/encoding :mir/dst :mir/src}
