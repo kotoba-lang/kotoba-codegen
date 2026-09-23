@@ -10,7 +10,7 @@
   still an assumption. Converted unchanged except for the host-conditional
   test require and the exception type."
   (:require [kotoba.lang.text]
-            #?(:clj  [clojure.test :refer [deftest is testing]]
+            #?(:clj  [kotoba.test :refer [deftest is testing]]
                :cljs [cljs.test :refer [deftest is testing] :include-macros true])
             [kotoba.codegen.mc :as mc]
             [kotoba.mir :as mir]))

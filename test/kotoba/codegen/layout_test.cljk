@@ -12,7 +12,7 @@
   conditionalised: it was a JVM widening hint, and the assertions below pin the
   four little-endian bytes for both positive and negative displacements, which
   is the property it was there to protect."
-  (:require #?(:clj  [clojure.test :refer [deftest is testing]]
+  (:require #?(:clj  [kotoba.test :refer [deftest is testing]]
                :cljs [cljs.test :refer [deftest is testing] :include-macros true])
             [kotoba.codegen.layout :as layout]))
 
