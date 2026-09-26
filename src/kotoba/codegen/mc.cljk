@@ -192,6 +192,10 @@
    :kernel-dequant-dot-iq3-s #{:mc/op :mc/encoding :mir/dst :mir/base
                              :mir/length :mir/second-base :mir/second-length
                              :mir/count :mir/maximum}
+   ;; dequant-ptq1: PTQ1_0 (kotoba-gmir ADR 0031), same keyset.
+   :kernel-dequant-dot-ptq1-0 #{:mc/op :mc/encoding :mir/dst :mir/base
+                              :mir/length :mir/second-base :mir/second-length
+                              :mir/count :mir/maximum}
    :kernel-subregion #{:mc/op :mc/encoding :mir/dst :mir/base :mir/length
                        :mir/offset :mir/size}
    :equal #{:mc/op :mc/encoding :mir/dst :mir/left :mir/right}
