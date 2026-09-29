@@ -6,65 +6,163 @@
   {:kotoba/export [->macho macho-types validate! version]}
   (:require [kotoba.lang.text :as str]))
 
-(def version 1)
+#?(:kotoba
+   (defn version [] :i64 1)
+   :default
+   (def version 1))
 
-(def macho-types
-  {:aarch64 #{:aarch64/unsigned :aarch64/branch26
-              :aarch64/page21 :aarch64/pageoff12}
-   :x86-64 #{:x86-64/unsigned :x86-64/signed :x86-64/branch
-             :x86-64/got-load :x86-64/got :x86-64/tlv}})
+#?(:kotoba
+   (defn macho-types [] :document
+     (document-map
+      :aarch64 (document-vector (document-keyword :aarch64/unsigned)
+                                (document-keyword :aarch64/branch26)
+                                (document-keyword :aarch64/page21)
+                                (document-keyword :aarch64/pageoff12))
+      :x86-64 (document-vector (document-keyword :x86-64/unsigned)
+                               (document-keyword :x86-64/signed)
+                               (document-keyword :x86-64/branch)
+                               (document-keyword :x86-64/got-load)
+                               (document-keyword :x86-64/got)
+                               (document-keyword :x86-64/tlv))))
+   :default
+   (def macho-types
+     {:aarch64 #{:aarch64/unsigned :aarch64/branch26
+                 :aarch64/page21 :aarch64/pageoff12}
+      :x86-64 #{:x86-64/unsigned :x86-64/signed :x86-64/branch
+                :x86-64/got-load :x86-64/got :x86-64/tlv}}))
 
-(defn- printable-ascii?
-  "Is CH a printable ASCII character? CH is a JVM Character or, on
-  ClojureScript, a one-character string -- `seq` over a string yields
-  different things on the two hosts.
+#?(:kotoba
+   ;; Kotoba reads S in UTF-8 bytes; a non-ASCII byte is > 126, so the range test
+   ;; refuses it exactly as the host refuses a non-ASCII character.
+   (defn- printable-ascii? [s :string] :bool
+     (let [n (string-byte-length s)]
+       (loop [i 0]
+         (if (>= i n)
+           true
+           (let [c (string-code-point-at s i)]
+             (if (and (>= c 32) (<= c 126))
+               (recur (inc i))
+               false))))))
+   :default
+   (defn- printable-ascii?
+     "Is CH a printable ASCII character? CH is a JVM Character or, on
+     ClojureScript, a one-character string -- `seq` over a string yields
+     different things on the two hosts.
 
-  This was `#(<= 0x20 (int %) 0x7e)`, which is correct on the JVM and SILENTLY
-  WRONG on ClojureScript. `(first \"_callee\")` is the STRING \"_\" there, and
-  `(int \"_\")` returns 0 -- not an error, not a character code, just 0. So the
-  range test failed for every symbol, `validate!` answered
-  `:non-canonical-request` for every relocation, and NO Mach-O object could be
-  emitted on the JVM-free runtime at all. Measured 2026-09-08 through
-  kotoba-native's `shared-relocations-reach-real-macho-records` the first time
-  it ran under nbb:
+     This was `#(<= 0x20 (int %) 0x7e)`, which is correct on the JVM and SILENTLY
+     WRONG on ClojureScript. `(first \"_callee\")` is the STRING \"_\" there, and
+     `(int \"_\")` returns 0 -- not an error, not a character code, just 0. So the
+     range test failed for every symbol, `validate!` answered
+     `:non-canonical-request` for every relocation, and NO Mach-O object could be
+     emitted on the JVM-free runtime at all. Measured 2026-09-08 through
+     kotoba-native's `shared-relocations-reach-real-macho-records` the first time
+     it ran under nbb:
 
-    request  {:reloc/target :aarch64 :reloc/type :aarch64/branch26
-              :reloc/symbol \"_callee\" ...}
-    JVM      accepted
-    nbb      relocation rejected: non-canonical-request
+       request  {:reloc/target :aarch64 :reloc/type :aarch64/branch26
+                 :reloc/symbol \"_callee\" ...}
+       JVM      accepted
+       nbb      relocation rejected: non-canonical-request
 
-  `(int <one-character string>)` returning 0 rather than throwing is what made
-  it silent, and it is the exact shape
-  `scripts/verify-cljc-runtime-parity.cljs` flags as `risky-mapv-int-over-string`
-  in the superproject."
-  [ch]
-  (let [code #?(:clj (int ch) :cljs (.charCodeAt ch 0))]
-    (and (<= 0x20 code) (<= code 0x7e))))
+     `(int <one-character string>)` returning 0 rather than throwing is what made
+     it silent, and it is the exact shape
+     `scripts/verify-cljc-runtime-parity.cljs` flags as `risky-mapv-int-over-string`
+     in the superproject."
+     [ch]
+     (let [code #?(:clj (int ch) :cljs (.charCodeAt ch 0))]
+       (and (<= 0x20 code) (<= code 0x7e)))))
 
-(defn- reject! [problem request]
-  (throw (ex-info (str "relocation rejected: " (name problem))
-                  {:phase :relocation :problem problem :request request})))
+#?(:kotoba
+   ;; An exported Kotoba function cannot abort, so the Kotoba twin answers the
+   ;; host's `throw` as a [:result T :document] error value (the abort ability's
+   ;; own lowering); the :document carries the ex-info data map.
+   (defn- reject! [request :document] [:result :document :document]
+     (result-err-of [:result :document :document]
+                    (document-map :phase (document-keyword :relocation)
+                                  :problem (document-keyword :non-canonical-request)
+                                  :request request)))
+   :default
+   (defn- reject! [problem request]
+     (throw (ex-info (str "relocation rejected: " (name problem))
+                     {:phase :relocation :problem problem :request request}))))
 
-(defn validate!
-  "Validate and return one canonical external relocation request."
-  [{:reloc/keys [version target section offset type symbol] :as request}]
-  (when-not (and (map? request)
-                 (= #{:reloc/version :reloc/target :reloc/section
-                      :reloc/offset :reloc/type :reloc/symbol}
-                    (set (keys request)))
-                 (= 1 version)
-                 (contains? macho-types target)
-                 (integer? section) (pos? section)
-                 (integer? offset) (<= 0 offset 0xffffffff)
-                 (contains? (get macho-types target) type)
-                 (string? symbol) (str/starts-with? symbol "_")
-                 (<= 2 (count symbol) 255)
-                 (every? printable-ascii? symbol))
-    (reject! :non-canonical-request request))
-  request)
+#?(:kotoba
+   (defn- field [d :document k :keyword] :document
+     (option-value-of [:option :document] (document-get d k) (document-null))))
 
-(defn ->macho
-  "Project a validated request into a Mach-O section relocation record."
-  [request]
-  (let [{:reloc/keys [offset type symbol]} (validate! request)]
-    {:offset offset :type type :symbol symbol}))
+#?(:kotoba
+   (defn- field-i64 [d :document k :keyword] :i64
+     (option-value-of [:option :i64] (document-i64-value (field d k)) -1)))
+
+#?(:kotoba
+   (defn- field-keyword [d :document k :keyword] :keyword
+     (option-value-of [:option :keyword] (document-keyword-value (field d k)) :none)))
+
+#?(:kotoba
+   (defn- field-string [d :document k :keyword] :string
+     (option-value-of [:option :string] (document-string-value (field d k)) "")))
+
+#?(:kotoba
+   (defn- type-of-target? [target :keyword type :keyword] :bool
+     (case target
+       :aarch64 (or (= type :aarch64/unsigned) (= type :aarch64/branch26)
+                    (= type :aarch64/page21) (= type :aarch64/pageoff12))
+       :x86-64 (or (= type :x86-64/unsigned) (= type :x86-64/signed)
+                   (= type :x86-64/branch) (= type :x86-64/got-load)
+                   (= type :x86-64/got) (= type :x86-64/tlv))
+       false)))
+
+#?(:kotoba
+   (defn- canonical? [request :document] :bool
+     (let [symbol (field-string request :reloc/symbol)
+           n (string-byte-length symbol)
+           offset (field-i64 request :reloc/offset)]
+       (and (map? request)
+            (= 6 (document-count request))
+            (= 1 (field-i64 request :reloc/version))
+            (type-of-target? (field-keyword request :reloc/target)
+                             (field-keyword request :reloc/type))
+            (> (field-i64 request :reloc/section) 0)
+            (>= offset 0) (<= offset 4294967295)
+            (str/starts-with? symbol "_")
+            (>= n 2) (<= n 255)
+            (printable-ascii? symbol)))))
+
+#?(:kotoba
+   (defn validate! [request :document] [:result :document :document]
+     (if (canonical? request)
+       (result-ok-of [:result :document :document] request)
+       (reject! request)))
+   :default
+   (defn validate!
+     "Validate and return one canonical external relocation request."
+     [{:reloc/keys [version target section offset type symbol] :as request}]
+     (when-not (and (map? request)
+                    (= #{:reloc/version :reloc/target :reloc/section
+                         :reloc/offset :reloc/type :reloc/symbol}
+                       (set (keys request)))
+                    (= 1 version)
+                    (contains? macho-types target)
+                    (integer? section) (pos? section)
+                    (integer? offset) (<= 0 offset 0xffffffff)
+                    (contains? (get macho-types target) type)
+                    (string? symbol) (str/starts-with? symbol "_")
+                    (<= 2 (count symbol) 255)
+                    (every? printable-ascii? symbol))
+       (reject! :non-canonical-request request))
+     request))
+
+#?(:kotoba
+   (defn ->macho [request :document] [:result :document :document]
+     (result-match-of [:result :document :document] (validate! request)
+       r (result-ok-of [:result :document :document]
+                       (document-map :offset (field r :reloc/offset)
+                                     :type (field r :reloc/type)
+                                     :symbol (field r :reloc/symbol)))
+       e (result-err-of [:result :document :document] e)))
+   :default
+   (defn ->macho
+     "Project a validated request into a Mach-O section relocation record."
+     [request]
+     (let [{:reloc/keys [offset type symbol]} (validate! request)]
+       {:offset offset :type type :symbol symbol})))
+
