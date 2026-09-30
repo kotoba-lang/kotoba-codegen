@@ -6,10 +6,18 @@
   Backends own the bytes for each encoding; this namespace owns the admitted
   data shape."
   {:kotoba/export [validate! version]}
-  (:require [kotoba.mir :as mir]))
+  #?(:kotoba (:schemas {:form/r [:record :form/r [[:tag :i64] [:s :string] [:n :i64] [:k :keyword]
+                                          [:kids [:list [:ref :form/r]]] [:span :i64] [:data :bytes]]]
+                                 :form/rd [:record :form/rd [[:form [:ref :form/r]] [:pos :i64]]]}))
+  (:require #?(:kotoba [kotoba.form :as form])
+            [kotoba.mir :as mir]))
 
-(def version 3)
+#?(:kotoba
+   (defn version [] :i64 3)
+   :default
+(def version 3))
 
+#?(:kotoba nil :default
 (def ^:private selected-keysets
   {:argument #{:mc/op :mc/encoding :mir/dst :mir/index}
    :constant #{:mc/op :mc/encoding :mir/dst :mir/value}
@@ -214,19 +222,313 @@
    :x86-privileged #{:mc/op :mc/encoding :mir/dst :mir/action :mir/arguments}
    :capability-call #{:mc/op :mc/encoding :mir/dst :mir/capability
                       :mir/kind :mir/context-offset :mir/arguments}
-   :return #{:mc/op :mc/encoding :mir/value}})
+   :return #{:mc/op :mc/encoding :mir/value}}))
 
+#?(:kotoba
+   (defn- selected-group-5-0? [op :keyword] :bool
+     (or (= op :add) (= op :subtract) (= op :multiply) (= op :quotient) (= op :bit-and) (= op :bit-or) (= op :bit-xor) (= op :shift-left) (= op :shift-right-signed) (= op :shift-right-unsigned) (= op :f64-add) (= op :f64-subtract))))
+
+#?(:kotoba
+   (defn- selected-group-5-1? [op :keyword] :bool
+     (or (= op :f64-multiply) (= op :f64-divide) (= op :f64-min) (= op :f64-max) (= op :f64-equal) (= op :f64-less-than) (= op :f64-less-or-equal) (= op :f64-greater-than) (= op :f64-greater-or-equal) (= op :f64-unordered) (= op :f32-add) (= op :f32-subtract))))
+
+#?(:kotoba
+   (defn- selected-group-5-2? [op :keyword] :bool
+     (or (= op :f32-multiply) (= op :f32-divide) (= op :f32-equal) (= op :f32-less-than) (= op :f32-less-or-equal) (= op :f32-greater-than) (= op :f32-greater-or-equal) (= op :f32-unordered) (= op :equal) (= op :less-than) (= op :greater-than) (= op :less-or-equal))))
+
+#?(:kotoba
+   (defn- selected-group-5-3? [op :keyword] :bool
+     (or (= op :greater-or-equal))))
+
+#?(:kotoba
+   ;; The key set a selected instruction of operation OP must have, as EDN text,
+   ;; or "" when OP is no operation.
+   (defn- selected-keyset-text [op :keyword] :string
+     (cond
+       (or (= op :argument) (= op :incoming-load)) "#{:mc/encoding :mc/op :mir/dst :mir/index}"
+       (or (= op :constant)) "#{:mc/encoding :mc/op :mir/dst :mir/value}"
+       (or (= op :data-address)) "#{:mc/encoding :mc/op :mir/content :mir/dst}"
+       (or (= op :rodata-address)) "#{:mc/encoding :mc/op :mir/content :mir/dst :mir/rodata-encoding}"
+       (or (= op :function-address)) "#{:mc/encoding :mc/op :mir/dst :mir/function}"
+       (or (selected-group-5-0? op) (selected-group-5-1? op) (selected-group-5-2? op) (selected-group-5-3? op)) "#{:mc/encoding :mc/op :mir/dst :mir/left :mir/right}"
+       (or (= op :multiply-add) (= op :multiply-subtract)) "#{:mc/encoding :mc/op :mir/addend :mir/dst :mir/left :mir/right}"
+       (or (= op :quotient-constant)) "#{:mc/encoding :mc/op :mir/divisor :mir/dst :mir/left}"
+       (or (= op :f64-sqrt) (= op :f32-sqrt) (= op :f32-to-f64) (= op :f64-to-f32) (= op :i64-to-f32) (= op :i64-to-f64)) "#{:mc/encoding :mc/op :mir/dst :mir/input}"
+       (or (= op :kernel-load-u8) (= op :kernel-load-u32) (= op :kernel-load-u16) (= op :kernel-load-u64) (= op :slice-load-u8) (= op :slice-load-u16) (= op :slice-load-u32) (= op :slice-load-u64) (= op :kernel-try-lock-u32) (= op :kernel-unlock-u32)) "#{:mc/encoding :mc/op :mir/base :mir/dst :mir/index :mir/length :mir/maximum}"
+       (or (= op :kernel-store-u8) (= op :kernel-store-u32) (= op :kernel-store-u16) (= op :kernel-store-u64) (= op :slice-store-u8) (= op :slice-store-u16) (= op :slice-store-u32) (= op :slice-store-u64) (= op :kernel-atomic-add-u32) (= op :kernel-atomic-add-u64) (= op :kernel-xchg-u32) (= op :kernel-xchg-u64)) "#{:mc/encoding :mc/op :mir/base :mir/dst :mir/index :mir/length :mir/maximum :mir/stored}"
+       (or (= op :kernel-cmpxchg-u32) (= op :kernel-cmpxchg-u64)) "#{:mc/encoding :mc/op :mir/base :mir/dst :mir/expected :mir/index :mir/length :mir/maximum :mir/stored}"
+       (or (= op :kernel-dot-f32) (= op :kernel-dequant-dot-q8-0) (= op :kernel-dequant-dot-q4-k) (= op :kernel-dequant-dot-q6-k) (= op :kernel-dequant-dot-iq4-xs) (= op :kernel-dequant-dot-iq2-s) (= op :kernel-dequant-dot-iq3-xxs) (= op :kernel-dequant-dot-iq3-s)) "#{:mc/encoding :mc/op :mir/base :mir/count :mir/dst :mir/length :mir/maximum :mir/second-base :mir/second-length}"
+       (or (= op :kernel-subregion)) "#{:mc/encoding :mc/op :mir/base :mir/dst :mir/length :mir/offset :mir/size}"
+       (or (= op :outgoing-argument) (= op :incoming-argument-store)) "#{:mc/encoding :mc/op :mir/index :mir/src}"
+       (or (= op :spill-load)) "#{:mc/encoding :mc/op :mir/dst :mir/slot}"
+       (or (= op :spill-store)) "#{:mc/encoding :mc/op :mir/slot :mir/src}"
+       (or (= op :move)) "#{:mc/encoding :mc/op :mir/dst :mir/src}"
+       (or (= op :call)) "#{:mc/encoding :mc/op :mir/arguments :mir/callee :mir/dst}"
+       (or (= op :tail-call)) "#{:mc/encoding :mc/op :mir/arguments :mir/callee}"
+       (or (= op :runtime-call)) "#{:mc/encoding :mc/op :mir/arguments :mir/context-offset :mir/dst :mir/runtime}"
+       (or (= op :x86-privileged)) "#{:mc/encoding :mc/op :mir/action :mir/arguments :mir/dst}"
+       (or (= op :capability-call)) "#{:mc/encoding :mc/op :mir/arguments :mir/capability :mir/context-offset :mir/dst :mir/kind}"
+       (or (= op :return)) "#{:mc/encoding :mc/op :mir/value}"
+       :else "")))
+
+;; ---------------------------------------------------------------------------
+;; Kotoba route: the MC contract over Form. Problems are returned as data while
+;; instructions are converted, and the first one aborts `validate!`.
+;; ---------------------------------------------------------------------------
+
+#?(:kotoba
+   (defn- fget [m [:ref :form/r] k :keyword] [:ref :form/r]
+     (form/form-get m (form/keyword-form k))))
+
+#?(:kotoba
+   (defn- fhas? [m [:ref :form/r] k :keyword] :bool
+     (form/form-has? m (form/keyword-form k))))
+
+#?(:kotoba
+   (defn- fkeyset? [m [:ref :form/r] text :string] :bool
+     (and (form/is-map? m) (form/eq (form/keys-of m) (form/edn-form text)))))
+
+#?(:kotoba
+   (defn- kw-of [f [:ref :form/r]] :keyword
+     (if (form/is-keyword? f) (form/keyword-value f) :none)))
+
+#?(:kotoba
+   (defn- reject! [problem :keyword] :i64
+     (throw (ex-info "MC rejected" {:phase :mc :problem problem}))))
+
+#?(:kotoba
+   (defn- problem-of [problem :keyword] [:ref :form/r]
+     (form/form-map (form/two-forms (form/keyword-form :problem) (form/keyword-form problem)))))
+
+#?(:kotoba
+   (defn- ok-of [value [:ref :form/r]] [:ref :form/r]
+     (form/form-map (form/two-forms (form/keyword-form :ok) value))))
+
+#?(:kotoba
+   (defn- keyword-text [k :keyword] :string
+     (document-edn-print (document-keyword k))))
+
+;; Does the namespace of ENCODING equal the name of TARGET?
+#?(:kotoba
+   (defn- encoding-matches-target? [target [:ref :form/r] encoding [:ref :form/r]] :bool
+     (and (form/is-keyword? target)
+          (form/is-keyword? encoding)
+          (let [t (keyword-text (form/keyword-value target))
+                e (keyword-text (form/keyword-value encoding))
+                slash (string-find-byte e 47 0)]
+            (and (>= slash 0)
+                 (string=? (string-substring e 1 slash)
+                           (string-substring t 1 (string-byte-length t))))))))
+
+#?(:kotoba
+   (defn- encoding-operation [encoding [:ref :form/r]] :keyword
+     (let [e (keyword-text (form/keyword-value encoding))
+           slash (string-find-byte e 47 0)]
+       (keyword-from-string (string-substring e (+ slash 1) (string-byte-length e))))))
+
+;; INSTRUCTION without the two MC keys, its operation spelled as a MIR op.
+#?(:kotoba
+   (defn- selected-as-mir [instruction [:ref :form/r] operation :keyword] [:ref :form/r]
+     (let [kids (form/kids-of instruction)
+           n (vector-count kids)
+           rest-map (loop [j 0 acc (form/no-forms)]
+                      (if (>= (+ j 1) n) acc
+                        (let [k (typed-list-nth [:list [:ref :form/r]] kids j)
+                              v (typed-list-nth [:list [:ref :form/r]] kids (+ j 1))]
+                          (recur (+ j 2)
+                                 (if (or (form/eq k (form/keyword-form :mc/op)) (form/eq k (form/keyword-form :mc/encoding)))
+                                   acc
+                                   (form/append-form (form/append-form acc k) v))))))]
+       (form/assoc-form (form/form-map rest-map) (form/keyword-form :mir/op)
+                        (form/keyword-form (keyword-from-string (string-concat "mir/" (let [t (keyword-text operation)] (string-substring t 1 (string-byte-length t))))))))))
+
+#?(:kotoba
+   (defn- selected-instruction-result [target [:ref :form/r] instruction [:ref :form/r]] [:ref :form/r]
+     (let [encoding (fget instruction :mc/encoding)]
+       (if (not (encoding-matches-target? target encoding))
+         (problem-of :target-encoding-mismatch)
+         (let [operation (encoding-operation encoding)
+               text (selected-keyset-text operation)]
+           (if (or (string=? text "") (not (fkeyset? instruction text)))
+             (problem-of :non-canonical-selected-instruction)
+             (ok-of (selected-as-mir instruction operation))))))))
+
+#?(:kotoba
+   (defn- two-key-map [k1 :keyword v1 [:ref :form/r] k2 :keyword v2 [:ref :form/r]] [:ref :form/r]
+     (form/form-map (form/append-form (form/append-form (form/append-form (form/append-form (form/no-forms) (form/keyword-form k1)) v1) (form/keyword-form k2)) v2))))
+
+#?(:kotoba
+   (defn- three-key-map [k1 :keyword v1 [:ref :form/r] k2 :keyword v2 [:ref :form/r] k3 :keyword v3 [:ref :form/r]] [:ref :form/r]
+     (form/assoc-form (two-key-map k1 v1 k2 v2) (form/keyword-form k3) v3)))
+
+#?(:kotoba
+   (defn- to-mir-instruction-result [target [:ref :form/r] instruction [:ref :form/r]] [:ref :form/r]
+     (let [op (kw-of (fget instruction :mc/op))]
+       (cond
+         (form/eq (fget instruction :mir/op) (form/keyword-form :mir/label)) (ok-of instruction)
+         (= op :mc/reentry)
+         (if (fkeyset? instruction "#{:mc/op :mc/parameters}")
+           (ok-of (two-key-map :mir/op (form/keyword-form :mir/reentry) :mir/parameters (fget instruction :mc/parameters)))
+           (problem-of :non-canonical-reentry))
+         (= op :mc/recur)
+         (if (fkeyset? instruction "#{:mc/op :mc/arguments}")
+           (ok-of (two-key-map :mir/op (form/keyword-form :mir/recur) :mir/arguments (fget instruction :mc/arguments)))
+           (problem-of :non-canonical-recur))
+         (= op :mc/instruction) (selected-instruction-result target instruction)
+         (or (= op :mc/branch-zero) (= op :mc/branch-nonzero))
+         (if (fkeyset? instruction "#{:mc/op :mc/test :mc/target}")
+           (ok-of (three-key-map :mir/op (form/keyword-form (if (= op :mc/branch-zero) :mir/branch-zero :mir/branch-nonzero))
+                                 :mir/test (fget instruction :mc/test)
+                                 :mir/target (fget instruction :mc/target)))
+           (problem-of :non-canonical-branch))
+         (= op :mc/jump)
+         (if (fkeyset? instruction "#{:mc/op :mc/target}")
+           (ok-of (two-key-map :mir/op (form/keyword-form :mir/jump) :mir/target (fget instruction :mc/target)))
+           (problem-of :non-canonical-jump))
+         :else (problem-of :unknown-operation)))))
+
+;; {:ok mir-instructions} or {:problem kw}
+#?(:kotoba
+   (defn- convert-instructions [target [:ref :form/r] instructions [:ref :form/r]] [:ref :form/r]
+     (let [n (form/count-of instructions)]
+       (loop [i 0 out (form/no-forms)]
+         (if (>= i n)
+           (ok-of (form/form-vec out))
+           (let [r (to-mir-instruction-result target (form/nth-of instructions i))]
+             (if (form/form-has? r (form/keyword-form :problem))
+               r
+               (recur (inc i) (form/append-form out (form/form-get r (form/keyword-form :ok)))))))))))
+
+#?(:kotoba
+   (defn- target-known? [target [:ref :form/r]] :bool
+     (or (form/eq target (form/keyword-form :x86-64)) (form/eq target (form/keyword-form :aarch64)))))
+
+#?(:kotoba
+   (defn- validate-v2! [program [:ref :form/r]] [:ref :form/r]
+     (let [target (fget program :mc/target)
+           frame-slots (fget program :mc/frame-slots)
+           instructions (fget program :mc/instructions)]
+       (if (not (and (fkeyset? program "#{:mc/version :mc/target :mc/frame-slots :mc/instructions}")
+                     (form/is-int? (fget program :mc/version))
+                     (= 2 (form/int-value (fget program :mc/version)))
+                     (target-known? target)
+                     (form/is-int? frame-slots)
+                     (>= (form/int-value frame-slots) 0)
+                     (<= (form/int-value frame-slots) 4095)
+                     (form/is-vec? instructions)))
+         (do (reject! :non-canonical-program) program)
+         (let [r (convert-instructions target instructions)]
+           (if (form/form-has? r (form/keyword-form :problem))
+             (do (reject! (kw-of (fget r :problem))) program)
+             (do (mir/validate!
+                  (form/form-map
+                   (form/append-form
+                    (form/append-form
+                     (form/append-form
+                      (form/append-form
+                       (form/append-form
+                        (form/append-form
+                         (form/append-form
+                          (form/append-form
+                           (form/append-form
+                            (form/append-form (form/no-forms) (form/keyword-form :mir/version))
+                            (form/int-form 1))
+                           (form/keyword-form :mir/target))
+                          target)
+                         (form/keyword-form :mir/registers))
+                        (form/keyword-form :physical))
+                       (form/keyword-form :mir/frame-slots))
+                      frame-slots)
+                     (form/keyword-form :mir/instructions))
+                    (form/form-get r (form/keyword-form :ok)))))
+                 program)))))))
+
+;; A v3 function as a MIR function: {:ok function} or {:problem kw}
+#?(:kotoba
+   (defn- convert-function [target [:ref :form/r] function [:ref :form/r]] [:ref :form/r]
+     (let [instructions (fget function :mc/instructions)]
+       (if (not (and (fkeyset? function "#{:mc/name :mc/arity :mc/frame-slots :mc/frame-policy :mc/instructions}")
+                     (form/is-vec? instructions)))
+         (problem-of :non-canonical-function)
+         (let [r (convert-instructions target instructions)]
+           (if (form/form-has? r (form/keyword-form :problem))
+             r
+             (ok-of (mir-function function (form/form-get r (form/keyword-form :ok))))))))))
+
+#?(:kotoba
+   (defn- mir-function [function [:ref :form/r] instructions [:ref :form/r]] [:ref :form/r]
+     (form/assoc-form
+      (form/assoc-form
+       (form/assoc-form
+        (two-key-map :mir/name (fget function :mc/name) :mir/arity (fget function :mc/arity))
+        (form/keyword-form :mir/frame-slots) (fget function :mc/frame-slots))
+       (form/keyword-form :mir/frame-policy) (fget function :mc/frame-policy))
+      (form/keyword-form :mir/instructions) instructions)))
+
+;; {:ok mir-functions} or {:problem kw}
+#?(:kotoba
+   (defn- convert-functions [target [:ref :form/r] functions [:ref :form/r]] [:ref :form/r]
+     (let [n (form/count-of functions)]
+       (loop [i 0 out (form/no-forms)]
+         (if (>= i n)
+           (ok-of (form/form-vec out))
+           (let [r (convert-function target (form/nth-of functions i))]
+             (if (form/form-has? r (form/keyword-form :problem))
+               r
+               (recur (inc i) (form/append-form out (form/form-get r (form/keyword-form :ok)))))))))))
+
+#?(:kotoba
+   (defn- mir-module [target [:ref :form/r] entry [:ref :form/r] functions [:ref :form/r]] [:ref :form/r]
+     (form/assoc-form
+      (form/assoc-form
+       (form/assoc-form
+        (two-key-map :mir/version (form/int-form 3) :mir/target target)
+        (form/keyword-form :mir/registers) (form/keyword-form :physical))
+       (form/keyword-form :mir/entry) entry)
+      (form/keyword-form :mir/functions) functions)))
+
+#?(:kotoba
+   (defn- validate-v3! [module [:ref :form/r]] [:ref :form/r]
+     (let [target (fget module :mc/target)
+           functions (fget module :mc/functions)]
+       (if (not (and (fkeyset? module "#{:mc/version :mc/target :mc/entry :mc/functions}")
+                     (form/is-int? (fget module :mc/version))
+                     (= 3 (form/int-value (fget module :mc/version)))
+                     (target-known? target)
+                     (form/is-vec? functions)
+                     (> (form/count-of functions) 0)))
+         (do (reject! :non-canonical-module) module)
+         (let [r (convert-functions target functions)]
+           (if (form/form-has? r (form/keyword-form :problem))
+             (do (reject! (kw-of (fget r :problem))) module)
+             (do (mir/validate! (mir-module target (fget module :mc/entry) (form/form-get r (form/keyword-form :ok))))
+                 module)))))))
+
+#?(:kotoba
+   (defn validate!
+     "Validate and return a closed allocated MC program unchanged. v3 mirrors
+     physical MIR function/frame ownership while retaining target encodings."
+     [program [:ref :form/r]] [:ref :form/r]
+     (let [version (fget program :mc/version)]
+       (cond
+         (and (form/is-int? version) (= 2 (form/int-value version))) (validate-v2! program)
+         (and (form/is-int? version) (= 3 (form/int-value version))) (validate-v3! program)
+         :else (do (reject! :unsupported-version) program)))))
+
+#?(:kotoba nil :default
 (def ^:private operation-keysets
   {:mc/reentry #{:mc/op :mc/parameters}
    :mc/recur #{:mc/op :mc/arguments}
    :mc/branch-zero #{:mc/op :mc/test :mc/target}
    :mc/branch-nonzero #{:mc/op :mc/test :mc/target}
-   :mc/jump #{:mc/op :mc/target}})
+   :mc/jump #{:mc/op :mc/target}}))
 
+#?(:kotoba nil :default
 (defn- reject! [problem instruction]
   (throw (ex-info (str "MC rejected: " (name problem))
-                  {:phase :mc :problem problem :instruction instruction})))
+                  {:phase :mc :problem problem :instruction instruction}))))
 
+#?(:kotoba nil :default
 (defn- selected-operation [target instruction]
   (let [encoding (:mc/encoding instruction)]
     (when-not (and (keyword? encoding) (= (name target) (namespace encoding)))
@@ -235,8 +537,9 @@
           keyset (get selected-keysets operation)]
       (when-not (= keyset (set (keys instruction)))
         (reject! :non-canonical-selected-instruction instruction))
-      operation)))
+      operation))))
 
+#?(:kotoba nil :default
 (defn- ->mir-instruction [target instruction]
   (if (= :mir/label (:mir/op instruction))
     instruction
@@ -281,8 +584,9 @@
           (reject! :non-canonical-jump instruction))
         {:mir/op :mir/jump :mir/target (:mc/target instruction)})
 
-      (reject! :unknown-operation instruction))))
+      (reject! :unknown-operation instruction)))))
 
+#?(:kotoba nil :default
 (defn- validate-v2!
   [{:mc/keys [version target frame-slots instructions] :as program}]
   (when-not (and (map? program)
@@ -298,8 +602,9 @@
     (mir/validate! {:mir/version 1 :mir/target target :mir/registers :physical
                     :mir/frame-slots frame-slots
                     :mir/instructions mir-instructions}))
-  program)
+  program))
 
+#?(:kotoba nil :default
 (defn- validate-v3!
   [{:mc/keys [target entry functions] :as module}]
   (when-not (and (= #{:mc/version :mc/target :mc/entry :mc/functions}
@@ -329,8 +634,9 @@
                     :mir/registers :physical
                     :mir/entry entry
                     :mir/functions mir-functions}))
-  module)
+  module))
 
+#?(:kotoba nil :default
 (defn validate!
   "Validate and return a closed allocated MC program unchanged. v3 mirrors
   physical MIR function/frame ownership while retaining target encodings."
@@ -338,4 +644,4 @@
   (case version
     2 (validate-v2! program)
     3 (validate-v3! program)
-    (reject! :unsupported-version program)))
+    (reject! :unsupported-version program))))
