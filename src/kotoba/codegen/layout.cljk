@@ -10,6 +10,78 @@
   lowering, register allocation, nor target instruction encoders."
   {:kotoba/export [label label-offsets label-token? relative-branch relative-branch-token? resolve-tokens signed-displacement token-size]})
 
+
+
+
+;; Kotoba twin of the four branch tables below: a table is a `case` over the
+;; encoding keyword. -1 stands where the host's `get` answers nil (an encoding
+;; this layer does not own).
+#?(:kotoba
+(defn- branch-size [enc :keyword] :i64
+  (case enc
+    (:x86-64/jz-rel32 :x86-64/js-rel32 :x86-64/jl-rel32 :x86-64/jg-rel32
+     :x86-64/ja-rel32 :x86-64/jae-rel32) 6
+    (:x86-64/jmp-rel32 :x86-64/call-rel32) 5
+    (:x86-64/jmp-rel8 :x86-64/jne-rel8 :x86-64/jns-rel8) 2
+    :x86-64/lea-rip-label 7
+    (:aarch64/adr-label :aarch64/cbz-x0-imm19 :aarch64/cbz-x1-imm19
+     :aarch64/cbz-imm19 :aarch64/cbnz-imm19 :aarch64/cbnz-x1-imm19
+     :aarch64/cbnz-x16-imm19 :aarch64/b-eq-imm19 :aarch64/b-ne-imm19
+     :aarch64/b-hi-imm19 :aarch64/b-hs-imm19 :aarch64/b-lt-imm19
+     :aarch64/b-gt-imm19 :aarch64/tbnz-imm14 :aarch64/b-imm26
+     :aarch64/bl-imm26) 4
+    -1)))
+
+#?(:kotoba
+(defn- branch-minimum [enc :keyword] :i64
+  (case enc
+    (:x86-64/jmp-rel8 :x86-64/jne-rel8 :x86-64/jns-rel8) -128
+    :aarch64/tbnz-imm14 -32768
+    (:aarch64/b-imm26 :aarch64/bl-imm26) -134217728
+    (:aarch64/adr-label :aarch64/cbz-x0-imm19 :aarch64/cbz-x1-imm19
+     :aarch64/cbz-imm19 :aarch64/cbnz-imm19 :aarch64/cbnz-x1-imm19
+     :aarch64/cbnz-x16-imm19 :aarch64/b-eq-imm19 :aarch64/b-ne-imm19
+     :aarch64/b-hi-imm19 :aarch64/b-hs-imm19 :aarch64/b-lt-imm19
+     :aarch64/b-gt-imm19) -1048576
+    -2147483648)))
+
+#?(:kotoba
+(defn- branch-maximum [enc :keyword] :i64
+  (case enc
+    (:x86-64/jmp-rel8 :x86-64/jne-rel8 :x86-64/jns-rel8) 127
+    :aarch64/tbnz-imm14 32764
+    (:aarch64/b-imm26 :aarch64/bl-imm26) 134217724
+    :aarch64/adr-label 1048575
+    (:aarch64/cbz-x0-imm19 :aarch64/cbz-x1-imm19
+     :aarch64/cbz-imm19 :aarch64/cbnz-imm19 :aarch64/cbnz-x1-imm19
+     :aarch64/cbnz-x16-imm19 :aarch64/b-eq-imm19 :aarch64/b-ne-imm19
+     :aarch64/b-hi-imm19 :aarch64/b-hs-imm19 :aarch64/b-lt-imm19
+     :aarch64/b-gt-imm19) 1048572
+    2147483647)))
+
+;; x86 displacements are measured from the END of the instruction (its width);
+;; every AArch64 row measures from the instruction itself (zero).
+#?(:kotoba
+(defn- branch-pc-bias [enc :keyword] :i64
+  (case enc
+    (:x86-64/jz-rel32 :x86-64/js-rel32 :x86-64/jl-rel32 :x86-64/jg-rel32
+     :x86-64/ja-rel32 :x86-64/jae-rel32) 6
+    (:x86-64/jmp-rel32 :x86-64/call-rel32) 5
+    (:x86-64/jmp-rel8 :x86-64/jne-rel8 :x86-64/jns-rel8) 2
+    :x86-64/lea-rip-label 7
+    0)))
+
+#?(:kotoba
+(defn- branch-alignment [enc :keyword] :i64
+  (case enc
+    (:x86-64/jz-rel32 :x86-64/js-rel32 :x86-64/jl-rel32 :x86-64/jg-rel32
+     :x86-64/ja-rel32 :x86-64/jae-rel32 :x86-64/jmp-rel32 :x86-64/call-rel32
+     :x86-64/jmp-rel8 :x86-64/jne-rel8 :x86-64/jns-rel8 :x86-64/lea-rip-label
+     :aarch64/adr-label) 1
+    4)))
+
+#?(:kotoba nil
+:default
 (def ^:private relative-branch-sizes
   {:x86-64/jz-rel32 6
    :x86-64/js-rel32 6
@@ -49,8 +121,10 @@
    :aarch64/b-gt-imm19 4
    :aarch64/tbnz-imm14 4
    :aarch64/b-imm26 4
-   :aarch64/bl-imm26 4})
+   :aarch64/bl-imm26 4}))
 
+#?(:kotoba nil
+:default
 (def ^:private relative-branch-ranges
   {:x86-64/jz-rel32 [(- 0x80000000) 0x7fffffff]
    :x86-64/js-rel32 [(- 0x80000000) 0x7fffffff]
@@ -83,8 +157,10 @@
    :aarch64/b-gt-imm19 [(- 0x100000) 0xffffc]
    :aarch64/tbnz-imm14 [(- 0x8000) 0x7ffc]
    :aarch64/b-imm26 [(- 0x8000000) 0x7fffffc]
-   :aarch64/bl-imm26 [(- 0x8000000) 0x7fffffc]})
+   :aarch64/bl-imm26 [(- 0x8000000) 0x7fffffc]}))
 
+#?(:kotoba nil
+:default
 ;; x86 relative displacements start after the instruction. AArch64 immediate
 ;; branches are relative to the address of the branch instruction itself.
 (def ^:private relative-branch-pc-bias
@@ -121,8 +197,10 @@
    :aarch64/b-gt-imm19 0
    :aarch64/tbnz-imm14 0
    :aarch64/b-imm26 0
-   :aarch64/bl-imm26 0})
+   :aarch64/bl-imm26 0}))
 
+#?(:kotoba nil
+:default
 (def ^:private relative-branch-alignments
   {:x86-64/jz-rel32 1
    :x86-64/js-rel32 1
@@ -156,13 +234,311 @@
    :aarch64/b-gt-imm19 4
    :aarch64/tbnz-imm14 4
    :aarch64/b-imm26 4
-   :aarch64/bl-imm26 4})
+   :aarch64/bl-imm26 4}))
 
+#?(:kotoba
+(defn- field [d :document k :keyword] :document
+  (get d k (document-null))))
+
+#?(:kotoba
+(defn- field-keyword [d :document k :keyword] :keyword
+  (match-option (document-keyword-value (field d k)) [:option :keyword]
+    (none :none)
+    (some kw kw))))
+
+#?(:kotoba
+(defn- doc-i64 [d :document fallback :i64] :i64
+  (match-option (document-i64-value d) [:option :i64]
+    (none fallback)
+    (some n n))))
+
+#?(:kotoba
+(defn- has-key? [d :document k :keyword] :bool
+  (match-option (document-get d (document-keyword k)) [:option :document]
+    (none false)
+    (some found true))))
+
+;; nil?/some? written inside a loop body do not type; a call to these does.
+#?(:kotoba
+(defn- absent? [d :document] :bool (nil? d)))
+
+#?(:kotoba
+(defn- present? [d :document] :bool (not (nil? d))))
+
+#?(:kotoba
+(defn- op-is? [token :document op :keyword] :bool
+  (and (map? token)
+       (document-equal? (field token :mir/op) (document-keyword op)))))
+
+;; A qualified keyword prints as :ns/name; `:/` (no namespace) prints with the
+;; slash at index 1.
+#?(:kotoba
+(defn- qualified-label-id? [x :document] :bool
+  (and (keyword? x)
+       (> (string-index-of (document-edn-print x) "/") 1))))
+
+;; The ex-info of the host: a message and a data map. The Kotoba twin throws one
+;; :document carrying both.
+#?(:kotoba
+(defn- problem [message :string token :document] :document
+  (document-map :message (document-string message)
+                :phase (document-keyword :layout)
+                :token token)))
+
+#?(:kotoba
+(defn- operands-count [operands :document] :i64
+  (if (vector? operands) (document-count operands) 0)))
+
+;; -1 stands for "not an integer / missing"; every register and bit range
+;; below excludes negatives, so it fails the same way the host predicate does.
+#?(:kotoba
+(defn- operand-at [operands :document i :i64] :i64
+  (if (> (operands-count operands) i)
+    (doc-i64 (nth operands i) -1)
+    -1)))
+
+#?(:kotoba
+(defn- in-range? [n :i64 lo :i64 hi :i64] :bool
+  (and (>= n lo) (<= n hi))))
+
+#?(:kotoba
+(defn- operands-problem [token :document enc :keyword] :document
+  (let [operands (field token :mir/operands)
+        n (operands-count operands)]
+    (cond
+      (= enc :aarch64/tbnz-imm14)
+      (if (and (= 2 n)
+               (in-range? (operand-at operands 0) 0 31)
+               (in-range? (operand-at operands 1) 0 63))
+        (document-null)
+        (problem "AArch64 TBNZ requires [register bit-index] operands" token))
+
+      (or (= enc :aarch64/cbz-imm19) (= enc :aarch64/cbnz-imm19))
+      (if (and (= 1 n) (in-range? (operand-at operands 0) 0 31))
+        (document-null)
+        (problem "AArch64 CBZ/CBNZ requires [register] operands" token))
+
+      (= enc :x86-64/lea-rip-label)
+      (if (and (= 1 n) (in-range? (operand-at operands 0) 0 15))
+        (document-null)
+        (problem "x86-64 LEA RIP-relative requires [register] operands" token))
+
+      (= enc :aarch64/adr-label)
+      (if (and (= 1 n) (in-range? (operand-at operands 0) 0 30))
+        (document-null)
+        (problem "AArch64 ADR requires [register] operands" token))
+
+      (has-key? token :mir/operands)
+      (problem "MIR branch encoding does not accept operands" token)
+
+      :else (document-null)))))
+
+#?(:kotoba
+(defn- branch-problem [token :document] :document
+  (let [enc (field-keyword token :mir/encoding)
+        keys-n (document-count token)
+        has-operands (has-key? token :mir/operands)]
+    (cond
+      (not (and (has-key? token :mir/encoding)
+                (has-key? token :mir/target)
+                (or (and (= 3 keys-n) (not has-operands))
+                    (and (= 4 keys-n) has-operands))))
+      (problem "non-canonical MIR relative branch token" token)
+
+      (< (branch-size enc) 0)
+      (problem "unsupported MIR relative branch encoding" token)
+
+      (not (qualified-label-id? (field token :mir/target)))
+      (problem "MIR branch target must be a qualified keyword" token)
+
+      (and has-operands (not (vector? (field token :mir/operands))))
+      (problem "MIR branch operands must be a vector" token)
+
+      :else (operands-problem token enc)))))
+
+;; A document that is null when TOKEN is valid, else the error to throw.
+#?(:kotoba
+(defn- validate-problem [token :document] :document
+  (cond
+    (op-is? token :mir/label)
+    (cond
+      (not (and (= 2 (document-count token)) (has-key? token :mir/id)))
+      (problem "non-canonical MIR label token" token)
+
+      (not (qualified-label-id? (field token :mir/id)))
+      (problem "MIR label id must be a qualified keyword" token)
+
+      :else (document-null))
+
+    (op-is? token :mir/relative-branch) (branch-problem token)
+
+    (and (map? token) (has-key? token :mir/op))
+    (problem "unknown canonical MIR token operation" token)
+
+    :else (document-null))))
+
+#?(:kotoba
+(defn- offsets-loop [tokens :document size-of [:fn [[:document] :document]]] :document
+  (let [n (document-count tokens)]
+    (loop [i 0 position 0 labels (document-map)]
+      (if (>= i n)
+        (document-map :ok labels)
+        (let [token (nth tokens i)
+              bad (validate-problem token)]
+          (if (present? bad)
+            (document-map :err bad)
+            (if (op-is? token :mir/label)
+              (let [id (field-keyword token :mir/id)]
+                (if (has-key? labels id)
+                  (document-map :err (assoc (problem "duplicate MIR label" token)
+                                            :label (document-keyword id)))
+                  (recur (inc i) position (assoc labels id (document-i64 position)))))
+              (let [size (doc-i64 (size-of token) -1)]
+                (if (< size 0)
+                  (document-map :err (problem "token has no non-negative encoded size" token))
+                  (recur (inc i) (+ position size) labels)))))))))))
+
+#?(:kotoba
+(defn- append-all [out :document encoded :document] :document
+  (let [n (operands-count encoded)]
+    (loop [i 0 acc out]
+      (if (>= i n)
+        acc
+        (recur (inc i) (document-vector-conj acc (nth encoded i))))))))
+
+;; One token of the second pass: {:err X} or {:size N :encoded V}.
+#?(:kotoba
+(defn- resolve-step [token :document position :i64 labels :document
+                     size-of [:fn [[:document] :document]]
+                     encode-branch [:fn [[:document :i64] :document]]
+                     encode-other [:fn [[:document :i64] :document]]] :document
+  (let [size (doc-i64 (size-of token) -1)]
+    (if (op-is? token :mir/relative-branch)
+      (let [enc (field-keyword token :mir/encoding)
+            target-id (field-keyword token :mir/target)
+            target (get labels target-id (document-null))]
+        (cond
+          (absent? target)
+          (document-map :err (assoc (problem "MIR branch references an unknown label" token)
+                                    :target (document-keyword target-id)))
+
+          (< (branch-size enc) 0)
+          (document-map :err (problem "unsupported MIR relative branch encoding" token))
+
+          :else
+          (let [displacement (- (doc-i64 target 0) (+ position (branch-pc-bias enc)))
+                minimum (branch-minimum enc)
+                maximum (branch-maximum enc)
+                alignment (branch-alignment enc)]
+            (cond
+              (not (in-range? displacement minimum maximum))
+              (document-map :err (assoc (assoc (assoc (problem "MIR relative branch displacement is out of range" token)
+                                                      :displacement (document-i64 displacement))
+                                               :minimum (document-i64 minimum))
+                                        :maximum (document-i64 maximum)))
+
+              (not (= 0 (- displacement (* (quot displacement alignment) alignment))))
+              (document-map :err (assoc (assoc (problem "MIR relative branch displacement is unaligned" token)
+                                               :displacement (document-i64 displacement))
+                                        :alignment (document-i64 alignment)))
+
+              :else
+              (let [encoded (encode-branch token displacement)]
+                (if (= size (operands-count encoded))
+                  (document-map :size (document-i64 size) :encoded encoded)
+                  (document-map :err (assoc (assoc (problem "branch encoder violated its reserved width" token)
+                                                   :reserved (document-i64 size))
+                                            :encoded (document-i64 (operands-count encoded))))))))))
+      (let [encoded (encode-other token position)]
+        (if (= size (operands-count encoded))
+          (document-map :size (document-i64 size) :encoded encoded)
+          (document-map :err (assoc (assoc (problem "token encoder violated its reserved width" token)
+                                           :reserved (document-i64 size))
+                                    :encoded (document-i64 (operands-count encoded))))))))))
+
+#?(:kotoba
+(defn- resolve-loop [tokens :document labels :document
+                     size-of [:fn [[:document] :document]]
+                     encode-branch [:fn [[:document :i64] :document]]
+                     encode-other [:fn [[:document :i64] :document]]] :document
+  (let [n (document-count tokens)]
+    (loop [i 0 position 0 out (document-vector)]
+      (if (>= i n)
+        (document-map :ok out)
+        (let [token (nth tokens i)]
+          (if (absent? token)
+            (document-map :ok out)
+            (if (op-is? token :mir/label)
+              (recur (inc i) position out)
+              (let [step (resolve-step token position labels size-of encode-branch encode-other)]
+                (if (has-key? step :err)
+                  step
+                  (recur (inc i)
+                         (+ position (doc-i64 (field step :size) 0))
+                         (append-all out (field step :encoded)))))))))))))
+
+#?(:kotoba
+(defn label [id :document] :document
+  (document-map :mir/op (document-keyword :mir/label) :mir/id id)))
+
+#?(:kotoba
+(defn relative-branch
+  ([encoding :document target :document] :document
+   (document-map :mir/op (document-keyword :mir/relative-branch)
+                 :mir/encoding encoding
+                 :mir/target target))
+  ([encoding :document target :document operands :document] :document
+   (document-map :mir/op (document-keyword :mir/relative-branch)
+                 :mir/encoding encoding
+                 :mir/target target
+                 :mir/operands operands))))
+
+#?(:kotoba
+(defn label-token? [token :document] :bool
+  (op-is? token :mir/label)))
+
+#?(:kotoba
+(defn relative-branch-token? [token :document] :bool
+  (op-is? token :mir/relative-branch)))
+
+#?(:kotoba
+(defn token-size [token :document] :document
+  (cond
+    (label-token? token) (document-i64 0)
+    (relative-branch-token? token)
+    (let [size (branch-size (field-keyword token :mir/encoding))]
+      (if (< size 0) (document-null) (document-i64 size)))
+    :else (document-null))))
+
+#?(:kotoba
+(defn label-offsets [tokens :document size-of [:fn [[:document] :document]]] :document
+  (let [r (offsets-loop tokens size-of)]
+    (if (has-key? r :err)
+      (throw (field r :err))
+      (field r :ok)))))
+
+#?(:kotoba
+(defn signed-displacement [position :i64 pc-bias :i64 target :i64] :i64
+  (- target (+ position pc-bias))))
+
+#?(:kotoba
+(defn resolve-tokens [tokens :document size-of [:fn [[:document] :document]] labels :document
+                      encode-branch [:fn [[:document :i64] :document]]
+                      encode-other [:fn [[:document :i64] :document]]] :document
+  (let [r (resolve-loop tokens labels size-of encode-branch encode-other)]
+    (if (has-key? r :err)
+      (throw (field r :err))
+      (field r :ok)))))
+
+#?(:kotoba nil
+:default
 (defn label
   "A zero-width, function-local label token. ID must be a qualified keyword."
   [id]
-  {:mir/op :mir/label :mir/id id})
+  {:mir/op :mir/label :mir/id id}))
 
+#?(:kotoba nil
+:default
 (defn relative-branch
   "A target instruction whose displacement is resolved by `resolve-tokens`."
   ([encoding target]
@@ -173,14 +549,20 @@
    {:mir/op :mir/relative-branch
     :mir/encoding encoding
     :mir/target target
-    :mir/operands (vec operands)}))
+    :mir/operands (vec operands)})))
 
+#?(:kotoba nil
+:default
 (defn label-token? [token]
-  (and (map? token) (= :mir/label (:mir/op token))))
+  (and (map? token) (= :mir/label (:mir/op token)))))
 
+#?(:kotoba nil
+:default
 (defn relative-branch-token? [token]
-  (and (map? token) (= :mir/relative-branch (:mir/op token))))
+  (and (map? token) (= :mir/relative-branch (:mir/op token)))))
 
+#?(:kotoba nil
+:default
 (defn token-size
   "Returns the encoded width of a layout token, or nil for a token owned by
   another layer."
@@ -188,11 +570,15 @@
   (cond
     (label-token? token) 0
     (relative-branch-token? token) (get relative-branch-sizes (:mir/encoding token))
-    :else nil))
+    :else nil)))
 
+#?(:kotoba nil
+:default
 (defn- qualified-label-id? [x]
-  (and (keyword? x) (some? (namespace x))))
+  (and (keyword? x) (some? (namespace x)))))
 
+#?(:kotoba nil
+:default
 (defn- validate-layout-token! [token]
   (cond
     (label-token? token)
@@ -265,8 +651,10 @@
                     {:phase :layout :token token}))
 
     :else nil)
-  token)
+  token))
 
+#?(:kotoba nil
+:default
 (defn label-offsets
   "First layout pass. SIZE-OF must return every non-label token's encoded
   width. Duplicate labels and unknown token widths fail closed."
@@ -285,15 +673,19 @@
               (throw (ex-info "token has no non-negative encoded size"
                               {:phase :layout :token token :size size})))
             (recur (next remaining) (+ position size) labels))))
-      labels)))
+      labels))))
 
+#?(:kotoba nil
+:default
 (defn signed-displacement
   "Returns TARGET-(POSITION+PC-BIAS). x86 uses its instruction width as the
   bias; AArch64 immediate branches use zero because their PC is the address of
   the branch instruction."
   [position pc-bias target]
-  (- target (+ position pc-bias)))
+  (- target (+ position pc-bias))))
 
+#?(:kotoba nil
+:default
 (defn resolve-tokens
   "Second layout pass. LABELS normally comes from `label-offsets`. ENCODE-BRANCH
   receives the canonical branch token and its signed displacement. ENCODE-OTHER
@@ -340,4 +732,4 @@
                             {:phase :layout :token token :reserved size
                              :encoded (count encoded)})))
           (recur (next remaining) (+ position size) (into out encoded))))
-      out)))
+      out))))
