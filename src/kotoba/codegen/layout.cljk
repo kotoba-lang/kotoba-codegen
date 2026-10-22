@@ -52,38 +52,38 @@
    :aarch64/bl-imm26 4})
 
 (def ^:private relative-branch-ranges
-  {:x86-64/jz-rel32 [(- 0x80000000) 0x7fffffff]
-   :x86-64/js-rel32 [(- 0x80000000) 0x7fffffff]
-   :x86-64/jl-rel32 [(- 0x80000000) 0x7fffffff]
-   :x86-64/jg-rel32 [(- 0x80000000) 0x7fffffff]
-   :x86-64/ja-rel32 [(- 0x80000000) 0x7fffffff]
-   :x86-64/jae-rel32 [(- 0x80000000) 0x7fffffff]
-   :x86-64/jmp-rel32 [(- 0x80000000) 0x7fffffff]
-   :x86-64/call-rel32 [(- 0x80000000) 0x7fffffff]
+  {:x86-64/jz-rel32 [-2147483648 2147483647]
+   :x86-64/js-rel32 [-2147483648 2147483647]
+   :x86-64/jl-rel32 [-2147483648 2147483647]
+   :x86-64/jg-rel32 [-2147483648 2147483647]
+   :x86-64/ja-rel32 [-2147483648 2147483647]
+   :x86-64/jae-rel32 [-2147483648 2147483647]
+   :x86-64/jmp-rel32 [-2147483648 2147483647]
+   :x86-64/call-rel32 [-2147483648 2147483647]
    :x86-64/jmp-rel8 [-128 127]
    :x86-64/jne-rel8 [-128 127]
    :x86-64/jns-rel8 [-128 127]
-   :x86-64/lea-rip-label [(- 0x80000000) 0x7fffffff]
+   :x86-64/lea-rip-label [-2147483648 2147483647]
    ;; boot-scratch/adr: +/-1 MiB, and the maximum is 0xfffff rather than the
    ;; branches' 0xffffc because ADR's displacement is in BYTES. Copying a
    ;; branch's row here would silently forbid the last three reachable
    ;; addresses.
-   :aarch64/adr-label [(- 0x100000) 0xfffff]
-   :aarch64/cbz-x0-imm19 [(- 0x100000) 0xffffc]
-   :aarch64/cbz-x1-imm19 [(- 0x100000) 0xffffc]
-   :aarch64/cbz-imm19 [(- 0x100000) 0xffffc]
-   :aarch64/cbnz-imm19 [(- 0x100000) 0xffffc]
-   :aarch64/cbnz-x1-imm19 [(- 0x100000) 0xffffc]
-   :aarch64/cbnz-x16-imm19 [(- 0x100000) 0xffffc]
-   :aarch64/b-eq-imm19 [(- 0x100000) 0xffffc]
-   :aarch64/b-ne-imm19 [(- 0x100000) 0xffffc]
-   :aarch64/b-hi-imm19 [(- 0x100000) 0xffffc]
-   :aarch64/b-hs-imm19 [(- 0x100000) 0xffffc]
-   :aarch64/b-lt-imm19 [(- 0x100000) 0xffffc]
-   :aarch64/b-gt-imm19 [(- 0x100000) 0xffffc]
-   :aarch64/tbnz-imm14 [(- 0x8000) 0x7ffc]
-   :aarch64/b-imm26 [(- 0x8000000) 0x7fffffc]
-   :aarch64/bl-imm26 [(- 0x8000000) 0x7fffffc]})
+   :aarch64/adr-label [-1048576 1048575]
+   :aarch64/cbz-x0-imm19 [-1048576 1048572]
+   :aarch64/cbz-x1-imm19 [-1048576 1048572]
+   :aarch64/cbz-imm19 [-1048576 1048572]
+   :aarch64/cbnz-imm19 [-1048576 1048572]
+   :aarch64/cbnz-x1-imm19 [-1048576 1048572]
+   :aarch64/cbnz-x16-imm19 [-1048576 1048572]
+   :aarch64/b-eq-imm19 [-1048576 1048572]
+   :aarch64/b-ne-imm19 [-1048576 1048572]
+   :aarch64/b-hi-imm19 [-1048576 1048572]
+   :aarch64/b-hs-imm19 [-1048576 1048572]
+   :aarch64/b-lt-imm19 [-1048576 1048572]
+   :aarch64/b-gt-imm19 [-1048576 1048572]
+   :aarch64/tbnz-imm14 [-32768 32764]
+   :aarch64/b-imm26 [-134217728 134217724]
+   :aarch64/bl-imm26 [-134217728 134217724]})
 
 ;; x86 relative displacements start after the instruction. AArch64 immediate
 ;; branches are relative to the address of the branch instruction itself.
